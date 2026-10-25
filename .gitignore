@@ -1,0 +1,4 @@
+prototype/dist/
+prototype/data/*.json
+__pycache__/
+.DS_Store
