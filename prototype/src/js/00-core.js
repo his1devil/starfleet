@@ -2,11 +2,15 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ═════════════════════════ data & helpers ═════════════════════════
-const TRACE = JSON.parse(document.getElementById('trace-data').textContent);
-const SESSION = TRACE.session;
-const WINDOW_TOKENS = SESSION.contextWindow || 1048576;
+// Two sources: a recorded local session (real, but only ~17 event types) and a staged session
+// that walks through every event type grok-build can emit. The director plays whichever is active.
+const TRACES = {
+  replay: JSON.parse(document.getElementById('trace-data').textContent),
+  demo: JSON.parse(document.getElementById('demo-data').textContent),
+};
+const SRC_NAME = { demo: '全事件演示', replay: '本机回放' };
+let SRC = 'demo', TRACE, SESSION, WINDOW_TOKENS, PROJECT, TL, MCP_SERVERS;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const PROJECT = (SESSION.cwd || '').split('/').filter(Boolean).pop() || 'session';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -61,6 +65,12 @@ function buildTimeline() {
   const windows = [];
   flat.forEach((e, i) => {
     if (e.type === 'permission.request' && e.link && e.link.d.wait >= 600) { e.human = true; windows.push([i, flat.indexOf(e.link)]); }
+    if (e.type === 'x.pending_interaction' && e.d.kind === 'plan_approval') {
+      for (let j = i + 1; j < flat.length && flat[j].ti === e.ti; j++) {
+        const r = flat[j];
+        if (r.type === 'x.interaction_resolved' && r.d.tool_call_id === e.d.tool_call_id) { if (r.real - e.real >= 600) { e.human = true; e.link = r; windows.push([i, j]); } break; }
+      }
+    }
     if (e.type === 'permission.resolve' && e.d.name === 'ask_user_question' && e.d.decision === 'allow') {
       for (let j = i + 1; j < flat.length && flat[j].ti === e.ti; j++) {
         const x = flat[j];
@@ -78,12 +88,23 @@ function buildTimeline() {
   });
   return flat;
 }
-const TL = buildTimeline();
-const REPLAY_TOKENS = TL.filter(e => e.type === 'turn.completed').reduce((s, e) => s + ((e.d.usage || {}).totalTokens || 0), 0);
-const REPLAY_TURNS = TL.filter(e => e.type === 'turn.completed').length;
-const LONG = TRACE.longTerm || {};
-const ARCHIVE_BASE = { tokens: Math.max(0, (LONG.tokens || 0) - REPLAY_TOKENS), turns: Math.max(0, (LONG.turns || 0) - REPLAY_TURNS) };
-const MCP_SERVERS = [...new Set(TL.filter(e => e.type === 'mcp.starting').map(e => e.d.server))];
+function useSource(name) {
+  SRC = TRACES[name] ? name : 'replay';
+  TRACE = TRACES[SRC]; SESSION = TRACE.session;
+  WINDOW_TOKENS = SESSION.contextWindow || 1048576;
+  PROJECT = (SESSION.cwd || '').split('/').filter(Boolean).pop() || 'session';
+  TL = buildTimeline();
+  MCP_SERVERS = [...new Set(TL.filter(e => e.type === 'mcp.starting').map(e => e.d.server))];
+}
+try { const saved = localStorage.getItem('starfleet.src'); if (saved && TRACES[saved]) SRC = saved; } catch (err) { /* storage may be blocked */ }
+useSource(SRC);
+// the long-term line always comes from the real recording: every turn this machine has run
+const LONG = TRACES.replay.longTerm || {};
+const REPLAY_DONE = TRACES.replay.turns.flatMap(t => t.events.filter(e => e[1] === 'turn.completed'));
+const ARCHIVE_BASE = {
+  tokens: Math.max(0, (LONG.tokens || 0) - REPLAY_DONE.reduce((s, e) => s + ((e[2].usage || {}).totalTokens || 0), 0)),
+  turns: Math.max(0, (LONG.turns || 0) - REPLAY_DONE.length),
+};
 
 // ═════════════════════════ palette (anatomy tones + Every Joule store colours) ═════════════════════════
 // Every drawn colour is a token with a light and a dark value; the shaders read the same tokens.
@@ -107,7 +128,7 @@ const MAT = { // albedo multipliers for painted parts (sRGB); "paper" parts take
 };
 let THEME = 'light';
 // the replay's wall clock (the recorded time of the event being shown); the director advances it
-let REAL_NOW = TRACE.turns?.[0]?.t0 || Date.now();
+let REAL_NOW = TRACE?.turns?.[0]?.t0 || Date.now();
 const CLOCK_REAL = () => REAL_NOW;
 function detectTheme() {
   const t = document.documentElement.dataset.theme;

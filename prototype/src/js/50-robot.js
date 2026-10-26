@@ -1,15 +1,15 @@
 // ═════════════════════════ the robot arm: the agent itself ═════════════════════════
 // A six-axis-looking arm hangs from a carriage on one rail down the middle of the roof. It folds up
 // to travel, swings down to the bench, and carries sample vials between the instruments.
-const GANTRY = { x0: -222, x1: 96, railY: 194, shoulderY: 176, safe: 168, aisle: 0, zMax: 74 };
+const GANTRY = { x0: VAN.x0 + 12, x1: FX - 10, railY: ROOF - 12, shoulderY: ROOF - 30, safe: 192, aisle: 0, zMax: 98 };
 // the head's flange sits 14.1 above the tool point; the wrist link above it is 10 long
-const ARM = { L1: 58, L2: 58, wrist: 14, reach: 24.1 };
+const ARM = { L1: 68, L2: 68, wrist: 14, reach: 24.1 };
 const ROBOT = {
   tip: V(-40, GANTRY.safe, 0), plan: [], tw: null, grip: 0, gripGoal: 0, held: null, tasks: [], task: null,
   mode: 'idle', text: '待命', at: null, scan: 0, cx: -40, yaw: 0,
 };
 const robotParts = {};
-const ROBOT_HOME = V(-60, GANTRY.safe, -14);
+const ROBOT_HOME = V(-100, GANTRY.safe, -16);
 function buildRobot() {
   const G = GANTRY, k = new Kit({ tone: 0.6 });
   // the rail: an aluminium extrusion hung from the roof on short posts, with end stops and a rack
@@ -68,17 +68,17 @@ function buildRobot() {
   const scan = new THREE.Mesh(new THREE.ConeGeometry(9, 26, 24, 1, true), scanMat); scan.position.set(0, -13, 0); scan.rotation.x = Math.PI; scan.layers.set(1); head.add(scan);
   const halo = glow(head, 0xffffff, 26, [0, 8, 0]);
   // cable chain riding on top of the rail
-  const chain = new THREE.InstancedMesh(slabGeo(2.4, 1.8, 3, 0, 0.3), solid(MAT.steel), 120);
+  const chain = new THREE.InstancedMesh(slabGeo(2.4, 1.8, 3, 0, 0.3), solid(MAT.steel), 160);
   chain.castShadow = true; chain.receiveShadow = true; chain.userData.tone = 0.3; chain.frustumCulled = false;
   world.add(chain);
   Object.assign(robotParts, { bridge: car, car, yaw, shoulder, elbow, wrist, head, ledMat, fingers, scan, scanMat, halo, chain });
 }
-const CH = { xf: -70, L: 300, R: 2.6, z: 0, y: GANTRY.railY + 5.6, m: new THREE.Matrix4() };
+const CH = { xf: -60, L: 250, R: 2.6, z: 0, y: GANTRY.railY + 5.6, m: new THREE.Matrix4() };
 function updateChain(xb) {
   const xl = (CH.L - Math.PI * CH.R + CH.xf + xb) / 2, links = robotParts.chain;
   const runA = xl - CH.xf, runB = xl - xb, arc = Math.PI * CH.R, total = runA + arc + runB;
   let i = 0;
-  for (let s = 1.6; s < total && i < 120; s += 3, i++) {
+  for (let s = 1.6; s < total && i < 160; s += 3, i++) {
     let x, y, ang = 0;
     if (s < runA) { x = CH.xf + s; y = CH.y; }
     else if (s < runA + arc) { const a = (s - runA) / CH.R; x = xl + Math.sin(a) * CH.R; y = CH.y + CH.R - Math.cos(a) * CH.R; ang = a; }
@@ -176,6 +176,9 @@ function robotRun(dt) {
     R.idleT = 0;
   }
   const T = R.task;
+  // with work piling up the arm hurries: up to four times its calm pace
+  const boost = 1 + clamp((R.tasks.length - 1) * 0.45, 0, 3);
+  dt *= boost;
   if (R.tw) {
     const tw = R.tw; tw.t += dt / tw.dur;
     R.tip.lerpVectors(tw.from, tw.to, ease(Math.min(1, tw.t)));

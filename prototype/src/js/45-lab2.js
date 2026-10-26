@@ -19,13 +19,13 @@ function holder(k, x, y, z) {
 
 // ── 4 · the sample freezer: every finished turn becomes a vial in its rack ──
 // a top-loading chest freezer with a sliding glass lid, so the gripper comes in from above
-const FRIDGE = { x: -209, z: -68, w: 46, d: 44, y0: FLOOR, h: 82 };
+const FRIDGE = { x: -271, z: -82, w: 46, d: 44, y0: FLOOR, h: 82 };
 const FR_RACK = FLOOR + 50;
-const FR_SLOTS = (() => { const s = []; for (let r = 0; r < 5; r++) for (let c = 0; c < 12; c++) s.push(V(FRIDGE.x - 17.6 + c * 3.2, FR_RACK, -52 - r * 4.8)); return s; })();
+const FR_SLOTS = (() => { const s = []; for (let r = 0; r < 5; r++) for (let c = 0; c < 12; c++) s.push(V(FRIDGE.x - 17.6 + c * 3.2, FR_RACK, FRIDGE.z + 16 - r * 4.8)); return s; })();
 station('archive', {
   name: '样品冰箱', role: '回合完成 · turn_completed', color: FLUID.text,
   desc: '每个回合结束，接收瓶里的产物被封进样品瓶，标上回合号和 token 数，放进低温冰柜的样品架。架上先放着本机所有 grok 会话的真实累计，回放每完成一个回合就多一瓶，这是长期成长线。',
-  work: [FRIDGE.x, 150, -50], pin: [FRIDGE.x, FLOOR + FRIDGE.h + 30, FRIDGE.z],
+  work: [FRIDGE.x, 160, FRIDGE.z + 22], pin: [FRIDGE.x, FLOOR + FRIDGE.h + 30, FRIDGE.z],
   build(S, g) {
     const { x, z, w, d, y0, h } = FRIDGE, k = new Kit({ tone: 0.5 }), t = 3, x0 = x - w / 2, x1 = x + w / 2, zb = z - d / 2, zf = z + d / 2, top = y0 + h;
     // plinth with a vent, a hollow body, the control strip and a handle on the front
@@ -36,14 +36,11 @@ station('archive', {
     k.box(w - 2 * t, h - 6, t, { p: [x, y0 + 6, zb + t / 2], b: 0.6 }); k.box(w - 2 * t, h - 6, t, { p: [x, y0 + 6, zf - t / 2], b: 0.6 });
     k.box(w - 2 * t - 0.4, 0.8, d - 2 * t - 0.4, { p: [x, FR_RACK - 6, z], color: MAT.pale, tone: 0.3 });
     // the vial rack: a block with sixty wells
-    k.box(w - 2 * t - 2, 4, 26, { p: [x, FR_RACK - 4, -61.6], rr: 1, b: 0.4, color: MAT.pale, tone: 0.45 });
+    k.box(w - 2 * t - 2, 4, 26, { p: [x, FR_RACK - 4, FRIDGE.z + 6.4], rr: 1, b: 0.4, color: MAT.pale, tone: 0.45 });
     for (const sl of FR_SLOTS) k.line(ringPts(sl.x, FR_RACK + 0.06, sl.z, 1.5, 10), 'lo');
     k.box(w - 8, 9, 1, { p: [x, top - 12, zf + 0.2], color: MAT.pale, tone: 0.45 });
     k.box(26, 2, 2, { p: [x + 4, top - 2.5, zf + 1.2], rr: 0.8, b: 0.3, color: MAT.steel, tone: 0.55 });
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) k.screw(x + sx * (w / 2 - 3), top, z + sz * (d / 2 - 3), { r: 0.45 });
-    // a cupboard of sample boxes on the wall above it
-    k.box(w, 26, 20, { p: [x, 150, -81], rr: 1, b: 0.6, color: MAT.paper, tone: 0.45 });
-    for (const dx of [-11.5, 11.5]) { k.box(22, 24, 1, { p: [x + dx, 151, -70.6], b: 0.4, color: MAT.paper, tone: 0.45 }); k.box(1, 8, 1.4, { p: [x + dx + (dx < 0 ? 9 : -9), 159, -69.6], color: MAT.steel }); }
     k.finish(g);
     // glass lid hinged at the back edge; it swings up to let the gripper in
     const lid = group(g, [x, top, zb + 1]);
@@ -84,11 +81,11 @@ station('archive', {
 });
 
 // ── 5 · the fume hood (shell commands) and its safety interlock (permission) ──
-const HOOD = { x: -152, z: -68, w: 60, d: 48 };
+const HOOD = { x: -216, z: -81, w: 60, d: 48 };
 station('hood', {
   name: '通风橱', role: '执行命令 · run_terminal_command', color: FLUID.tool,
   desc: '命令行工具在通风橱里做：机器人把工单放进去，玻璃视窗降下，本生灯点火，烧杯里开始冒泡，侧面的屏幕显示命令和输出。成功亮绿灯，失败亮红灯、冒烟。',
-  work: [HOOD.x + 18, 150, -36], pin: [HOOD.x, 192, HOOD.z],
+  work: [HOOD.x + 18, 160, HOOD.z + 32], pin: [HOOD.x, 194, HOOD.z],
   build(S, g) {
     const { x, z, w, d } = HOOD, k = new Kit({ tone: 0.5 }), x0 = x - w / 2, x1 = x + w / 2, zb = z - d / 2, zf = z + d / 2, top = 184;
     // base cabinet with two doors and a hazard label
@@ -163,9 +160,9 @@ station('hood', {
 station('interlock', {
   name: '安全联锁', role: '权限请求 · request_permission', color: MAT.hazard,
   desc: '钥匙开关加红绿灯。agent 要执行需要审批的工具时（session/request_permission），机器人带着工单停在联锁前，灯闪黄等你批准；批准后钥匙转动、绿灯亮；拒绝则红灯，工单作废扔进废液桶。',
-  work: [HOOD.x + 36, 150, -34], pin: [HOOD.x + 35, 172, -44],
+  work: [HOOD.x + 38, 160, HOOD.z + 47], pin: [HOOD.x + 35, 172, HOOD.z + 37],
   build(S, g) {
-    const x = HOOD.x + HOOD.w / 2 + 4, z = -44.6, y = 138, k = new Kit({ tone: 0.75 });
+    const x = HOOD.x + HOOD.w / 2 + 4, z = HOOD.z + HOOD.d / 2 + 0.4, y = 138, k = new Kit({ tone: 0.75 });
     k.box(11, 22, 1.4, { p: [x, y, z], rr: 1, b: 0.3, color: MAT.hazard, paint: 1, tone: 0.7 });
     for (let i = -4; i <= 4; i++) k.line([[x - 5.5, y + 11 + i * 2.4 - 2.6, z + 0.75], [x - 5.5 + 2.4, y + 11 + i * 2.4, z + 0.75]], 'hi');
     k.box(8, 18, 1.2, { p: [x, y + 2, z + 1.1], rr: 0.8, b: 0.3, color: MAT.paper, tone: 0.7 });
@@ -196,7 +193,7 @@ station('interlock', {
 });
 
 // ── 6 · microscope (read_file / list_dir) ──
-const SCOPE = { x: -13, z: -70 };
+const SCOPE = { x: -66, z: -84 };
 station('scope', {
   name: '显微镜', role: '读文件 / 列目录 · read', color: FLUID.cache,
   desc: '读文件和列目录在显微镜下做：工单放进样品座，底灯亮起，物镜转到位，旁边的屏幕显示文件路径和读到的内容。',
@@ -241,7 +238,7 @@ station('scope', {
 });
 
 // ── 7 · spectrometer (grep / search) ──
-const SPEC = { x: 31, z: -69 };
+const SPEC = { x: -12, z: -83 };
 station('spectro', {
   name: '分光仪', role: '搜索 · grep / search', color: FLUID.reason,
   desc: '搜索在光学平台上做：光源经狭缝和透镜打到棱镜，散开的光谱落在探测屏上。搜索命中的每一行就是屏上亮起的一条谱线。',
@@ -301,7 +298,7 @@ station('spectro', {
 });
 
 // ── 8 · pipetting station (write / edit) ──
-const PIPET = { x: 80, z: -68 };
+const PIPET = { x: 36, z: -82 };
 station('pipettor', {
   name: '移液工作站', role: '写文件 / 编辑 · write / edit', color: FLUID.ok,
   desc: '写文件和编辑在移液工作站做：八通道移液头先从试剂槽吸液，再一列列滴进 96 孔板。绿孔是新增的行，红孔是删除的行，屏幕上是文件路径和增删行数。',
@@ -356,18 +353,19 @@ station('pipettor', {
 station('intake', {
   name: '传递窗', role: '用户消息 · user_message', color: FLUID.user,
   desc: '驾驶室的电传打印机打出委托单（用户消息），装进金色样品瓶，经隔断上的传递窗送进实验区。机器人在这里接过它，倒进储液塔。',
-  work: [96, 150, -26], pin: [104, 176, -26],
+  work: [FX - 12, 158, -26], pin: [FX - 4, 178, -26],
   build(S, g) {
     const k = new Kit({ tone: 0.45 }), x = FX;
     // lower bulkhead panel, mesh partition above, the pass-through hatch
-    k.box(4, 76, 184, { p: [x, FLOOR, 0], b: 0.6, color: MAT.pale });
-    k.box(4, 2, 184, { p: [x, FLOOR + 76, 0], b: 0.4 });
-    for (const zz of [-90, -48, -4, 90]) k.box(3, 196 - FLOOR - 78, 3, { p: [x, FLOOR + 78, zz], color: MAT.steel, tone: 0.45 });
-    k.box(3, 3, 184, { p: [x, 193, 0], color: MAT.steel, tone: 0.45 });
-    for (let zz = 4; zz < 90; zz += 5) k.line([[x - 0.1, FLOOR + 78, zz], [x - 0.1, 193, zz]], 'lo');
-    for (let yy = FLOOR + 82; yy < 193; yy += 5) k.line([[x - 0.1, yy, -4], [x - 0.1, yy, 90]], 'lo');
-    for (let zz = -86; zz < -48; zz += 5) k.line([[x - 0.1, FLOOR + 78, zz], [x - 0.1, 193, zz]], 'lo');
-    for (let yy = FLOOR + 82; yy < 193; yy += 5) k.line([[x - 0.1, yy, -88], [x - 0.1, yy, -48]], 'lo');
+    const zW = NEARZ - WALLZ - 2, top = ROOF - 14;
+    k.box(4, 76, zW, { p: [x, FLOOR, 0], b: 0.6, color: MAT.pale });
+    k.box(4, 2, zW, { p: [x, FLOOR + 76, 0], b: 0.4 });
+    for (const zz of [WALLZ + 2, -48, -4, NEARZ - 2]) k.box(3, top - FLOOR - 78, 3, { p: [x, FLOOR + 78, zz], color: MAT.steel, tone: 0.45 });
+    k.box(3, 3, zW, { p: [x, top, 0], color: MAT.steel, tone: 0.45 });
+    for (let zz = 4; zz < NEARZ - 2; zz += 5) k.line([[x - 0.1, FLOOR + 78, zz], [x - 0.1, top, zz]], 'lo');
+    for (let yy = FLOOR + 82; yy < top; yy += 5) k.line([[x - 0.1, yy, -4], [x - 0.1, yy, NEARZ - 2]], 'lo');
+    for (let zz = WALLZ + 6; zz < -48; zz += 5) k.line([[x - 0.1, FLOOR + 78, zz], [x - 0.1, top, zz]], 'lo');
+    for (let yy = FLOOR + 82; yy < top; yy += 5) k.line([[x - 0.1, yy, WALLZ + 2], [x - 0.1, yy, -48]], 'lo');
     // hatch: frame and a little tray that pushes a vial through
     k.box(14, 2, 40, { p: [x - 5, 138, -26], b: 0.4, color: MAT.paper, tone: 0.55 });
     k.box(2, 26, 2, { p: [x - 11, 140, -45], color: MAT.steel }); k.box(2, 26, 2, { p: [x - 11, 140, -7], color: MAT.steel });
@@ -380,7 +378,7 @@ station('intake', {
 station('radio', {
   name: '对讲机', role: '向用户提问 · ask_user_question', color: FLUID.user,
   desc: 'agent 需要问你问题时（ask_user_question），机器人去隔断上取下对讲机听筒，等你回答。',
-  work: [98, 150, 20], pin: [104, 158, 20],
+  work: [FX - 10, 156, 20], pin: [FX - 4, 158, 20],
   build(S, g) {
     const k = new Kit({ tone: 0.6 }), x = FX - 2.4, y = 112, z = 20;
     k.box(3.4, 12, 22, { p: [x - 1.7, y, z], rr: 1.5, b: 0.5, color: MAT.graphite, tone: 0.55 });
@@ -400,7 +398,7 @@ station('radio', {
 station('notebook', {
   name: '实验记录夹', role: '计划 / 待办 · todo_write', color: FLUID.text,
   desc: '隔断上夹着的实验方案。agent 写待办（todo_write）时机器人来这里勾选条目；挂钟走的是录制时间。',
-  work: [96, 146, 56], pin: [104, 150, 56],
+  work: [FX - 12, 152, 56], pin: [FX - 4, 150, 56],
   build(S, g) {
     const k = new Kit({ tone: 0.6 }), x = FX - 2.2;
     k.box(1.2, 30, 22, { p: [x - 0.6, 92, 56], rr: 1, b: 0.3, color: MAT.cork, tone: 0.45 });
@@ -409,8 +407,8 @@ station('notebook', {
     k.cyl(7.5, 2, { p: [x - 1, 160, 28], r: [0, 0, Math.PI / 2], color: MAT.paper, seg: 36, b: 0.5, tone: 0.55 });
     for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; k.line([[x - 3.05, 160 + Math.cos(a) * 6.4, 28 + Math.sin(a) * 6.4], [x - 3.05, 160 + Math.cos(a) * (i % 3 ? 5.6 : 5), 28 + Math.sin(a) * (i % 3 ? 5.6 : 5)]], i % 3 ? 'lo' : 'mid'); }
     // fire extinguisher
-    k.cyl(4.6, 34, { p: [x - 6, FLOOR + 1, 80], color: MAT.redlamp, paint: 1, b: 1, tone: 0.6 });
-    k.cyl(1.6, 4, { p: [x - 6, FLOOR + 35, 80], color: MAT.graphite });
+    k.cyl(4.6, 34, { p: [x - 6, FLOOR + 1, NEARZ - 12], color: MAT.redlamp, paint: 1, b: 1, tone: 0.6 });
+    k.cyl(1.6, 4, { p: [x - 6, FLOOR + 35, NEARZ - 12], color: MAT.graphite });
     k.finish(g);
     const paper = makeScreen(19, 26, 12, (c, w, h, s, P) => {
       c.fillStyle = THEME === 'dark' ? '#1d1d1d' : '#fbfbf7'; c.fillRect(0, 0, w, h);
@@ -436,7 +434,7 @@ station('notebook', {
 });
 
 // ── 10 · near side: rotary evaporator (compaction), drone dock (subagent), racks, bins ──
-const ROTA = { x: -150, z: 76, y: FLOOR + 24 };
+const ROTA = { x: -206, z: 90, y: FLOOR + 24 };
 station('rotavap', {
   name: '旋转蒸发仪', role: '自动压缩 · auto_compact', color: FLUID.context,
   desc: '上下文过 85% 时（auto_compact_started），储液塔的液体被抽进旋蒸瓶，在水浴里旋转蒸发，冷凝收集，浓缩后的摘要回流到储液塔，液位骤降（auto_compact_completed）。',
@@ -485,7 +483,7 @@ station('rotavap', {
     if (R.spin > 0.5 && Math.random() < dt * 6) fx.puffs.emit(V(ROTA.x - 3, ROTA.y + 34, ROTA.z - 1), V(6, 10, 3), 0xcfe8f0, 1.2, 3, 1.4, 0.35);
   },
 });
-const DOCK = { x: -88, z: 76, y: FLOOR + 24 };
+const DOCK = { x: -120, z: 90, y: FLOOR + 24 };
 station('dock', {
   name: '无人机坞站', role: '子 agent · spawn_subagent', color: FLUID.cache,
   desc: '派出子 agent（spawn_subagent）时，坞站上的四旋翼带着样品出发：天窗打开，飞出车外，每 2 秒发回一次进度（subagent_progress），完成后带着结果回来（subagent_finished）。',
@@ -497,7 +495,7 @@ station('dock', {
     k.line([[x - 3, y + 2.06, z - 4], [x - 3, y + 2.06, z + 4]], 'mid'); k.line([[x + 3, y + 2.06, z - 4], [x + 3, y + 2.06, z + 4]], 'mid'); k.line([[x - 3, y + 2.06, z], [x + 3, y + 2.06, z]], 'mid');
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) k.box(3, 1, 3, { p: [x + sx * 14, y + 2, z + sz * 10], color: MAT.brass, tone: 0.5 });
     // roof hatch frame above the dock
-    k.box(36, 2, 3, { p: [x, ROOF - 6, z - 17], color: MAT.steel, tone: 0.45 }); k.box(36, 2, 3, { p: [x, ROOF - 6, 87], color: MAT.steel, tone: 0.45 });
+    k.box(36, 2, 3, { p: [x, ROOF - 6, z - 17], color: MAT.steel, tone: 0.45 }); k.box(36, 2, 3, { p: [x, ROOF - 6, z + 11], color: MAT.steel, tone: 0.45 });
     k.finish(g);
     const drone = group(g, [x, y + 2, z]);
     const kd = new Kit({ tone: 0.85 });
@@ -518,7 +516,8 @@ station('dock', {
   update(S, t, dt) {
     const R = S.refs;
     R.rotors.forEach((r, i) => { r.rotation.y += dt * R.spin * (i % 2 ? 40 : -40); });
-    R.ledMat.userData.u.uGlow.value = R.flight ? (Math.sin(t * 9) > 0 ? 1 : 0.2) : 0.25;
+    R.ping = Math.max(0, (R.ping || 0) - dt);
+    R.ledMat.userData.u.uGlow.value = R.flight || R.ping > 0 ? (Math.sin(t * 9) > 0 ? 1 : 0.2) : 0.25;
     const F = R.flight;
     if (F) {
       F.t += dt / F.dur;
@@ -530,7 +529,7 @@ station('dock', {
     } else R.spin = damp(R.spin, 0, 1.5, dt);
   },
 });
-const RACK = { x: -14, z: 79 };
+const RACK = { x: -42, z: 92 };
 station('rack', {
   name: '仪器机柜', role: 'MCP 服务 · mcp_server', color: FLUID.cache,
   desc: '每个 MCP 服务是机柜里的一个模块：启动时自检灯走一遍，连上后常亮，模块数和工具数显示在面板上。',
@@ -548,28 +547,30 @@ station('rack', {
       mods.push(yy);
     });
     // patch cables up to the tray under the roof
-    for (const [i, yy] of mods.slice(0, 2).entries()) k.tube([[x + 8 + i * 2, yy + 6, z - d / 2 - 0.5], [x + 8 + i * 2, yy + 6, z - d / 2 - 3], [x + 10 + i * 2, FLOOR + 62, z - 14], [x + 14, 182, 74]], 0.45, { bend: 5, color: i ? MAT.amberlamp : FLUID.cache, paint: 1, radial: 6 });
+    for (const [i, yy] of mods.slice(0, 2).entries()) k.tube([[x + 8 + i * 2, yy + 6, z - d / 2 - 0.5], [x + 8 + i * 2, yy + 6, z - d / 2 - 3], [x + 10 + i * 2, FLOOR + 62, z - 14], [x + 14, ROOF - 12, NEARZ - 6]], 0.45, { bend: 5, color: i ? MAT.amberlamp : FLUID.cache, paint: 1, radial: 6 });
     k.finish(g);
     const leds = [];
     mods.slice(0, 2).forEach((yy, mi) => { for (let i = 0; i < 4; i++) leds.push({ m: mesh(sphereGeo(0.45, 8, 6), solid(0xffffff, { glow: 0.1, glowColor: FLUID.ok }), g, [x + 3 + i * 2, yy + 6.4, z - d / 2 + 0.6], [0, 0, 0], { tone: 0.6, cast: false }), mod: mi, i }); });
-    return { leds, boot: [0, 0], online: [false, false] };
+    return { leds, boot: [0, 0], online: [false, false], fail: [false, false], pulse: 0, active: 0, heart: 0 };
   },
   update(S, t, dt) {
     const R = S.refs;
     for (const L of R.leds) {
-      const b = R.boot[L.mod], on = R.online[L.mod];
-      const k = b > 0 ? (Math.floor(t * 8 + L.i) % 4 === 0 ? 1 : 0.15) : on ? (L.i === 3 ? 0.4 + 0.6 * (Math.sin(t * 13 + L.mod) > 0.6 ? 1 : 0) : 0.85) : 0.08;
-      L.m.material.userData.u.uGlow.value = k; L.m.material.userData.u.uGlowColor.value.set(b > 0 ? MAT.amberlamp : FLUID.ok);
+      const b = R.boot[L.mod], on = R.online[L.mod], bad = R.fail[L.mod];
+      let k = b > 0 ? (Math.floor(t * 8 + L.i) % 4 === 0 ? 1 : 0.15) : on ? (L.i === 3 ? 0.4 + 0.6 * (Math.sin(t * 13 + L.mod) > 0.6 ? 1 : 0) : 0.85) : bad ? (L.i < 2 ? 0.9 : 0.1) : 0.08;
+      if (R.pulse > 0 && L.mod === R.active) k = Math.floor(t * 14 + L.i) % 2 ? 1 : 0.3;
+      if (R.heart > 0 && L.i === 0) k = Math.max(k, Math.sin(t * 10) > 0 ? 1 : 0.2);
+      L.m.material.userData.u.uGlow.value = k; L.m.material.userData.u.uGlowColor.value.set(bad && !on ? FLUID.err : b > 0 ? MAT.amberlamp : FLUID.ok);
     }
-    R.boot = R.boot.map(b => Math.max(0, b - dt));
+    R.boot = R.boot.map(b => Math.max(0, b - dt)); R.pulse = Math.max(0, R.pulse - dt); R.heart = Math.max(0, R.heart - dt);
   },
 });
 station('antenna', {
   name: '天线与接收机', role: '联网搜索 / 抓网页 · web_search / web_fetch', color: FLUID.cache,
   desc: '车顶的抛物面天线连着侧门边的接收机。联网搜索和抓网页时天线转向、接收机屏幕上出现波形。',
-  work: [34, 140, 60], pin: [34, ROOF + 30, 70],
+  work: [-4, 150, 70], pin: [-4, ROOF + 30, 80],
   build(S, g) {
-    const x = 34, z = 79, k = new Kit({ tone: 0.5 });
+    const x = -4, z = 92, k = new Kit({ tone: 0.5 });
     k.box(26, 44, 20, { p: [x, FLOOR, z], rr: 1.5, b: 0.6, color: MAT.pale, tone: 0.45 });
     k.box(22, 12, 1, { p: [x, FLOOR + 28, z - 10.4], rr: 0.8, b: 0.2, color: MAT.paper, tone: 0.55 });
     for (const dx of [-7, -3]) k.cyl(1.4, 1.4, { p: [x + dx, FLOOR + 22, z - 10.4], r: [-Math.PI / 2, 0, 0], color: MAT.graphite, b: 0.3 });
@@ -606,18 +607,18 @@ station('antenna', {
 station('waste', {
   name: '废液桶', role: '失败 / 被拒的工单', color: FLUID.err,
   desc: '工具失败或权限被拒时，红盖的工单样品被扔进废液桶。',
-  work: [-194, 140, 62], pin: [-194, FLOOR + 62, 70],
+  work: [-250, 150, 74], pin: [-250, FLOOR + 62, 86],
   build(S, g) {
-    const x = -194, z = 70, y = FLOOR + 24, k = new Kit({ tone: 0.5 });
+    const x = -250, z = 86, y = FLOOR + 24, k = new Kit({ tone: 0.5 });
     k.lathe([[0, 0], [8, 0], [8.6, 0.6, 1], [9.2, 22, 1], [9.6, 22.6], [9.6, 23.4], [0, 23.4]], { p: [x, y, z], color: MAT.paper, seg: 32 });
     k.box(8, 1.4, 4, { p: [x, y, z + 9], color: MAT.graphite });
     // two gas cylinders strapped behind it
-    for (const [cx, hex] of [[-228, MAT.steel], [-214, 0x9bb3c9]]) {
-      k.lathe([[0, 0], [6, 0], [6.3, 0.6, 1], [6.3, 44, 1], [5.2, 49, 1], [2, 51.5], [2, 54], [0, 54]], { p: [cx, y, 80], color: hex, seg: 28, tone: 0.5 });
-      k.cyl(2.2, 4, { p: [cx, y + 54, 80], color: MAT.brass, b: 0.3 });
-      k.cyl(2.4, 1.2, { p: [cx + 2.4, y + 57, 80], r: [0, 0, -Math.PI / 2], color: MAT.paper, b: 0.2 });
+    for (const [cx, hex] of [[x - 36, MAT.steel], [x - 22, 0x9bb3c9]]) {
+      k.lathe([[0, 0], [6, 0], [6.3, 0.6, 1], [6.3, 44, 1], [5.2, 49, 1], [2, 51.5], [2, 54], [0, 54]], { p: [cx, y, z + 8], color: hex, seg: 28, tone: 0.5 });
+      k.cyl(2.2, 4, { p: [cx, y + 54, z + 8], color: MAT.brass, b: 0.3 });
+      k.cyl(2.4, 1.2, { p: [cx + 2.4, y + 57, z + 8], r: [0, 0, -Math.PI / 2], color: MAT.paper, b: 0.2 });
     }
-    k.box(24, 2.4, 1.2, { p: [-221, y + 34, 86.6], color: MAT.graphite });
+    k.box(24, 2.4, 1.2, { p: [x - 29, y + 34, z + 14.6], color: MAT.graphite });
     k.finish(g);
     const lid = group(g, [x, y + 23.4, z - 9.6]);
     const kl = new Kit({ tone: 0.7 }); kl.lathe([[0, 0], [9.8, 0], [9.8, 1.6], [8, 2.6], [0, 2.8]], { p: [0, 0, 9.6], color: FLUID.err, paint: 1, seg: 32 }); kl.finish(lid);
@@ -630,18 +631,19 @@ station('waste', {
 station('cab', {
   name: '驾驶台', role: '委托与回复 · prompt / answer', color: FLUID.user,
   desc: '电传打印机打出你发来的委托（用户消息），也打出 agent 的回答。速度表指的是当前流式输出的 tok/s，里程表是本机所有 grok 会话累计的 token。',
-  work: [96, 152, -40], pin: [196, 160, 0],
+  work: [FX - 12, 160, -40], pin: [258, 170, 0],
   build(S, g) {
+    g.position.set(62, 0, 0);
     const k = new Kit({ tone: 0.45 });
     // dashboard shelf and cowl, instrument hood behind the wheel
-    k.box(26, 22, 182, { p: [204, 106, 0], rr: 4, b: 1.2, color: MAT.pale, tone: 0.45 });
-    k.box(14, 6, 40, { p: [197, 128, -46], rr: 3, b: 1, color: MAT.graphite, tone: 0.5 });
-    for (let zz = -80; zz <= 80; zz += 4) k.line([[214, 128.06, zz], [218, 128.06, zz]], 'lo');
+    k.box(26, 30, 200, { p: [204, 106, 0], rr: 4, b: 1.2, color: MAT.pale, tone: 0.45 });
+    k.box(14, 6, 40, { p: [197, 136, -50], rr: 3, b: 1, color: MAT.graphite, tone: 0.5 });
+    for (let zz = -88; zz <= 88; zz += 4) k.line([[214, 136.06, zz], [218, 136.06, zz]], 'lo');
     // steering wheel and column
-    k.at([181, 136, -46], [0, 0, -1.0], kk => { kk.torus(15, 1.3, { tub: 48, color: MAT.graphite, tone: 0.7 }); kk.cyl(3.4, 2.2, { p: [0, -1.1, 0], color: MAT.graphite, b: 0.6 }); for (const a of [0.3, Math.PI - 0.3, -Math.PI / 2]) kk.tube([[Math.cos(a) * 3, 0, Math.sin(a) * 3], [Math.cos(a) * 14, 0, Math.sin(a) * 14]], 0.9, { color: MAT.graphite, radial: 8 }); kk.cyl(1.6, 16, { p: [0, -17, 0], color: MAT.graphite }); });
+    k.at([181, 144, -50], [0, 0, -1.0], kk => { kk.torus(15, 1.3, { tub: 48, color: MAT.graphite, tone: 0.7 }); kk.cyl(3.4, 2.2, { p: [0, -1.1, 0], color: MAT.graphite, b: 0.6 }); for (const a of [0.3, Math.PI - 0.3, -Math.PI / 2]) kk.tube([[Math.cos(a) * 3, 0, Math.sin(a) * 3], [Math.cos(a) * 14, 0, Math.sin(a) * 14]], 0.9, { color: MAT.graphite, radial: 8 }); kk.cyl(1.6, 16, { p: [0, -17, 0], color: MAT.graphite }); });
     // seats
     for (const sz of [-1, 1]) {
-      const sx = 138, zz = sz * 46;
+      const sx = 142, zz = sz * 50;
       k.box(30, 14, 34, { p: [sx, FLOOR, zz], rr: 2, b: 0.6, color: MAT.graphite, tone: 0.4 });
       k.box(40, 9, 44, { p: [sx + 2, FLOOR + 14, zz], rr: 5, b: 2, color: 0xc9c6bf, tone: 0.5 });
       k.at([sx - 18, FLOOR + 22, zz], [0, 0, 0.22], kk => { kk.box(9, 52, 44, { p: [0, 0, 0], rr: 5, b: 2, color: 0xc9c6bf, tone: 0.5 }); kk.box(7, 15, 24, { p: [0, 58, 0], rr: 4, b: 1.5, color: 0xc9c6bf, tone: 0.5 }); for (const dz of [-6, 6]) kk.cyl(0.6, 6, { p: [0, 52, dz], color: MAT.steel }); });
@@ -651,11 +653,11 @@ station('cab', {
     k.box(16, 18, 20, { p: [148, FLOOR, 0], rr: 3, b: 0.8, color: MAT.graphite, tone: 0.4 });
     k.cyl(0.8, 14, { p: [150, FLOOR + 18, 0], color: MAT.steel }); k.sphere(2.2, { p: [150, FLOOR + 33, 0], color: MAT.graphite });
     // teletype on the centre of the dash: case, paper roll, platen
-    k.box(22, 13, 26, { p: [194, 117, 4], rr: 2, b: 0.8, color: MAT.paper, tone: 0.6 });
-    k.cyl(4.6, 22, { p: [200, 133.6, 4 - 11], r: [Math.PI / 2, 0, 0], color: 0xf7f5ee, seg: 28, tone: 0.55 });
-    k.cyl(1.2, 26, { p: [200, 133.6, 4 - 13], r: [Math.PI / 2, 0, 0], color: MAT.steel, seg: 12 });
-    k.box(4, 3, 22, { p: [184.5, 125, 4], color: MAT.graphite });
-    for (let zz = -6; zz <= 14; zz += 2) k.line([[183.4, 120, zz], [183.4, 124, zz]], 'lo');
+    k.box(22, 13, 26, { p: [194, 125, 4], rr: 2, b: 0.8, color: MAT.paper, tone: 0.6 });
+    k.cyl(4.6, 22, { p: [200, 141.6, 4 - 11], r: [Math.PI / 2, 0, 0], color: 0xf7f5ee, seg: 28, tone: 0.55 });
+    k.cyl(1.2, 26, { p: [200, 141.6, 4 - 13], r: [Math.PI / 2, 0, 0], color: MAT.steel, seg: 12 });
+    k.box(4, 3, 22, { p: [184.5, 133, 4], color: MAT.graphite });
+    for (let zz = -6; zz <= 14; zz += 2) k.line([[183.4, 128, zz], [183.4, 132, zz]], 'lo');
     k.finish(g);
     // live: the printed tape curling over the edge, two gauges
     const tape = makeScreen(20, 46, 10, (c, w, h, s, P) => {
@@ -670,10 +672,10 @@ station('cab', {
     for (let i = 0; i < pos.count; i++) { const v = pos.getY(i) + 23, a = (v / 46) * 2.2; pos.setXYZ(i, pos.getX(i), Math.sin(a) * 12 - 6, -Math.cos(a) * 12 + 12); }
     tg.computeVertexNormals();
     tape.mesh.geometry.dispose(); tape.mesh.geometry = tg; tape.mesh.material.side = THREE.DoubleSide;
-    tape.mesh.position.set(183, 124, 4); tape.mesh.rotation.y = -Math.PI / 2; tape.mesh.rotation.order = 'YXZ';
+    tape.mesh.position.set(183, 132, 4); tape.mesh.rotation.y = -Math.PI / 2; tape.mesh.rotation.order = 'YXZ';
     g.add(tape.mesh); tape.paint({ lines: [{ t: 'MV-01 TELETYPE READY', dim: true }] });
-    const gauge = (z, draw) => { const s = makeScreen(11, 11, 22, draw); s.mesh.position.set(190.4, 128.5, z); s.mesh.rotation.y = -Math.PI / 2; s.mesh.rotation.x = 0; g.add(s.mesh); return s; };
-    const speedo = gauge(-52, (c, w, h, s, P) => {
+    const gauge = (z, draw) => { const s = makeScreen(11, 11, 22, draw); s.mesh.position.set(190.4, 136.5, z); s.mesh.rotation.y = -Math.PI / 2; s.mesh.rotation.x = 0; g.add(s.mesh); return s; };
+    const speedo = gauge(-56, (c, w, h, s, P) => {
       c.strokeStyle = P.screenInk; c.fillStyle = P.screenInk; c.lineWidth = Math.max(1, w * 0.012);
       c.beginPath(); c.arc(w / 2, h / 2, w * 0.44, 0, TAU); c.stroke();
       for (let i = 0; i <= 10; i++) { const a = Math.PI * 0.75 + (i / 10) * Math.PI * 1.5; c.beginPath(); c.moveTo(w / 2 + Math.cos(a) * w * 0.38, h / 2 + Math.sin(a) * w * 0.38); c.lineTo(w / 2 + Math.cos(a) * w * (i % 5 ? 0.33 : 0.3), h / 2 + Math.sin(a) * w * (i % 5 ? 0.33 : 0.3)); c.stroke(); }
@@ -681,7 +683,7 @@ station('cab', {
       c.lineWidth = Math.max(1.5, w * 0.022); c.beginPath(); c.moveTo(w / 2, h / 2); c.lineTo(w / 2 + Math.cos(a) * w * 0.34, h / 2 + Math.sin(a) * w * 0.34); c.stroke();
       c.font = `500 ${w * 0.1}px ${FONT_MONO}`; c.textAlign = 'center'; c.fillText(`${Math.round(s.v || 0)} tok/s`, w / 2, h * 0.76); c.textAlign = 'left';
     });
-    const odo = gauge(-38, (c, w, h, s, P) => {
+    const odo = gauge(-42, (c, w, h, s, P) => {
       c.fillStyle = P.screenInk; c.font = `600 ${w * 0.1}px ${FONT_MONO}`; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText('ODO', w / 2, h * 0.28);
       const digits = String(Math.round(s.v || 0)).padStart(8, '0');

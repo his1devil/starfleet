@@ -40,7 +40,14 @@ if shutil.which('node'):
 
 data = pathlib.Path(args.data).read_text(encoding='utf-8')
 json.loads(data)  # fail fast on a broken trace
-page = src.replace('__SCRIPT__', script).replace('__TRACE_JSON__', data.replace('</', '<\\/'))
+# the staged full-coverage session is synthetic, so it is rebuilt here rather than kept in git
+demo_path = ROOT / 'data' / 'demo-trace.json'
+subprocess.run([sys.executable, str(ROOT.parent / 'tools' / 'make_demo_trace.py'), '--out', str(demo_path)], check=True, capture_output=True)
+demo = demo_path.read_text(encoding='utf-8')
+json.loads(demo)
+page = (src.replace('__SCRIPT__', script)
+        .replace('__TRACE_JSON__', data.replace('</', '<\\/'))
+        .replace('__DEMO_JSON__', demo.replace('</', '<\\/')))
 
 (dist / 'starfleet.html').write_text(page, encoding='utf-8')
 (dist / 'index.html').write_text(

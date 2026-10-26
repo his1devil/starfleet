@@ -90,12 +90,13 @@ button { font: inherit; color: inherit; }
 .t-turn { --c: var(--ink); --cf: var(--ink); } .t-sys { --c: var(--muted); --cf: var(--rule-2); } .t-fog { --c: var(--red); --cf: var(--ink); }
 
 /* instruments */
-.ins { padding: 12px 14px 14px; display: grid; gap: 14px; }
+.ins { padding: 12px 14px 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .blk h3 { margin: 0 0 7px; display: flex; justify-content: space-between; align-items: baseline; font: 500 10px/1 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
 .blk h3 em { font-style: normal; font-weight: 400; color: var(--muted); letter-spacing: 0.04em; text-transform: none; font-variant-numeric: tabular-nums; }
 .gauge { position: relative; height: 16px; box-shadow: 0 0 0 1px var(--line) inset; background: repeating-linear-gradient(to right, var(--rule-2) 0 1px, transparent 1px 10%); }
 .gauge i { position: absolute; inset: 2px auto 2px 2px; width: 0; background: var(--teal-f); transition: width 0.6s cubic-bezier(.32,.72,0,1), background 0.3s; }
 .gauge.hot i { background: var(--red-f); }
+.gauge.cov i { background: var(--ink); }
 .gauge b { position: absolute; top: -3px; bottom: -3px; left: 85%; width: 0; border-left: 1.5px solid var(--red); }
 .gauge-note { display: flex; justify-content: space-between; margin-top: 5px; font: 400 10px/1.3 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); box-shadow: 0 0 0 1px var(--rule); }
@@ -121,10 +122,31 @@ button { font: inherit; color: inherit; }
 .stations .n { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font: 500 9.5px/1 var(--f-mono); box-shadow: 0 0 0 1px var(--line) inset; color: var(--ink-2); }
 .stations li.on .n { background: var(--ink); color: var(--card); box-shadow: none; }
 .stations li.used .n { box-shadow: 0 0 0 1.5px var(--ink) inset; color: var(--ink); }
+.stations li > span:nth-child(2) { min-width: 0; }
 .stations b { font: 500 12px/1.2 var(--f-sans); display: block; }
 .stations small { font: 400 10px/1.2 var(--f-mono); color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stations em { font: 400 10px/1 var(--f-mono); font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* small segmented controls in panel headers */
+.seg-sm { display: flex; gap: 0; box-shadow: 0 0 0 1px var(--rule-2); border-radius: 2px; }
+.seg-sm button { border: 0; background: none; cursor: pointer; padding: 4px 8px; font: 500 10px/1.2 var(--f-mono); letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; }
+.seg-sm button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.seg-sm button:not([aria-pressed="true"]):hover { background: var(--hover); color: var(--ink); }
+.seg-sm em { font-style: normal; opacity: 0.8; font-variant-numeric: tabular-nums; }
+/* event codex: every event type, grouped by layer, lit once it has been seen */
+.codex { padding: 10px 14px 16px; display: grid; gap: 12px; }
+.codex h3 { margin: 0 0 6px; display: flex; justify-content: space-between; font: 500 10px/1 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.codex h3 em { font-style: normal; color: var(--muted); letter-spacing: 0.04em; text-transform: none; font-variant-numeric: tabular-nums; }
+.codex .chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.codex .chip { border: 0; cursor: pointer; padding: 3px 6px 3px 5px; border-radius: 2px; font: 400 10.5px/1.25 var(--f-sans); color: var(--muted); background: none; box-shadow: 0 0 0 1px var(--rule) inset; display: inline-flex; align-items: center; gap: 4px; }
+.codex .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 0 1px var(--rule-2) inset; flex: none; }
+.codex .chip.seen { color: var(--ink); box-shadow: 0 0 0 1px var(--rule-2) inset; }
+.codex .chip.seen::before { background: var(--c, var(--ink)); box-shadow: none; }
+.codex .chip.flash { animation: chip-in 1.2s ease-out; }
+@keyframes chip-in { 0% { background: var(--press); } 100% { background: none; } }
+.codex .chip:hover { background: var(--hover); }
+.codex .chip small { font: 400 9.5px/1 var(--f-mono); color: var(--muted); }
+.pop-h { margin: 2px 6px 4px; font: 500 10px/1.3 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 /* ── capsule controls ── */
 .capsule { position: fixed; z-index: 4; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 26px; background: var(--sheet); box-shadow: var(--shadow); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); max-width: calc(100vw - 32px); }
 .capsule button { height: 36px; min-width: 36px; padding: 0 10px; border: 0; border-radius: 18px; background: none; cursor: pointer; display: inline-grid; place-items: center; font: 500 11px/1 var(--f-mono); letter-spacing: 0.04em; color: var(--ink-2); white-space: nowrap; }
@@ -137,7 +159,8 @@ button { font: inherit; color: inherit; }
 .capsule .seg button { padding: 0 8px; min-width: 32px; }
 .xray { display: flex; align-items: center; gap: 8px; padding: 0 8px; font: 500 11px/1 var(--f-mono); color: var(--ink-2); }
 .xray input { width: 86px; accent-color: var(--ink); }
-.demo-pop { position: fixed; z-index: 5; bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); left: 50%; transform: translateX(-50%); display: grid; gap: 2px; padding: 6px; min-width: 250px; background: var(--card); box-shadow: var(--shadow); border-radius: 14px; }
+.demo-pop { position: fixed; z-index: 5; bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); left: 50%; transform: translateX(-50%); display: grid; gap: 2px; padding: 8px; width: min(380px, calc(100vw - 32px)); max-height: 60vh; overflow-y: auto; background: var(--card); box-shadow: var(--shadow); border-radius: 14px; }
+.demo-pop #chapters { display: grid; gap: 2px; }
 .demo-pop button { display: grid; grid-template-columns: 1fr; text-align: left; gap: 2px; padding: 8px 10px; border: 0; border-radius: 9px; background: none; cursor: pointer; }
 .demo-pop button:hover { background: var(--hover); }
 .demo-pop button:disabled { opacity: 0.4; cursor: default; }
@@ -206,6 +229,7 @@ button { font: inherit; color: inherit; }
 .toast.out { opacity: 0; transform: translateY(-4px); }
 
 /* ── narrow screens: the panels become one bottom sheet ── */
+body[data-panels="hide"] .panel { display: none; }
 @media (max-width: 1080px) { :root { --panel-w: 270px; } }
 @media (max-width: 860px) {
   :root { --band-top: 34px; }
@@ -213,7 +237,7 @@ button { font: inherit; color: inherit; }
   .panel { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); left: max(16px, env(safe-area-inset-left, 0px)) !important; right: max(16px, env(safe-area-inset-right, 0px)) !important; width: auto; height: min(52vh, 440px); display: none; }
   body[data-sheet="notebook"] .panel.left, body[data-sheet="instruments"] .panel.right { display: flex; }
   .capsule .mob { display: inline-grid; }
-  .capsule .speed-x, .capsule .xray, #pins-btn { display: none; }
+  .capsule .speed-x, .capsule .xray, #pins-btn, #panels-btn { display: none; }
   .capsule button { padding: 0 9px; }
   .corner.fig, .corner.title { display: none; }
   .corner.readout { bottom: auto; top: 14px; left: 16px; right: 16px; white-space: normal; line-height: 1.4; }
@@ -233,7 +257,7 @@ button { font: inherit; color: inherit; }
 </div>
 
 <aside class="panel left" id="notebook" aria-label="实验记录">
-  <div class="ph"><h2>实验记录</h2><span id="nb-src">录制回放</span></div>
+  <div class="ph"><h2>实验记录</h2><div class="seg-sm" id="src-seg" role="group" aria-label="数据来源"><button type="button" data-src="demo" aria-pressed="true">全事件演示</button><button type="button" data-src="replay" aria-pressed="false">本机回放</button></div></div>
   <ol class="proto" id="proto">
     <li data-phase="waiting_for_model" style="--c: var(--teal)">加热<small>等首滴</small></li>
     <li data-phase="streaming_reasoning" style="--c: var(--violet)">回流<small>推理</small></li>
@@ -246,8 +270,9 @@ button { font: inherit; color: inherit; }
 </aside>
 
 <aside class="panel right" id="instruments" aria-label="仪表">
-  <div class="ph"><h2>仪表</h2><span id="ins-sub">—</span></div>
-  <div class="scroll"><div class="ins">
+  <div class="ph"><h2 id="rp-title">仪表</h2><div class="seg-sm" id="rtabs" role="tablist" aria-label="面板"><button type="button" role="tab" data-tab="ins" aria-selected="true" aria-pressed="true">仪表</button><button type="button" role="tab" data-tab="codex" aria-selected="false" aria-pressed="false">图鉴 <em id="codex-count">0</em></button></div></div>
+  <div class="scroll" id="codex-pane" hidden><div class="codex" id="codex"></div></div>
+  <div class="scroll" id="ins-pane"><div class="ins">
     <section class="blk">
       <h3>储液塔 · 上下文<em id="ctx-pct">—</em></h3>
       <div class="gauge" id="ctx-gauge"><i></i><b title="85% 自动压缩线"></b></div>
@@ -259,6 +284,10 @@ button { font: inherit; color: inherit; }
       <div><dt>回收 缓存</dt><dd id="st-cache">—</dd><small id="st-cache-sub">缓存读取占输入</small></div>
       <div><dt>仪器 成功率</dt><dd id="st-tools">—</dd><small id="st-tools-sub">工具调用</small></div>
     </dl>
+    <section class="blk">
+      <h3>事件覆盖<em id="cov-note">—</em></h3>
+      <div class="gauge cov" id="cov-gauge"><i></i></div>
+    </section>
     <section class="blk">
       <h3>进样 · 每回合输入<em id="in-max"></em></h3>
       <canvas class="chart" id="ch-in"></canvas>
@@ -297,16 +326,16 @@ button { font: inherit; color: inherit; }
   <span class="sep"></span>
   <label class="xray" for="xray"><span>透视</span><input type="range" id="xray" min="0" max="100" value="22" aria-label="车身透视程度"></label>
   <button type="button" id="pins-btn" aria-pressed="true" title="仪器编号">编号</button>
+  <button type="button" id="panels-btn" aria-pressed="true" title="显示或收起两侧面板">面板</button>
   <button type="button" id="theme-btn" aria-label="切换明暗"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none"/></svg></button>
-  <button type="button" id="demo-btn" aria-expanded="false" aria-controls="demo-pop">演示</button>
+  <button type="button" id="demo-btn" aria-expanded="false" aria-controls="demo-pop">章节</button>
   <span class="sep mob"></span>
   <button type="button" class="mob" data-sheet="notebook" aria-pressed="false">记录</button>
   <button type="button" class="mob" data-sheet="instruments" aria-pressed="false">仪表</button>
 </nav>
 <div class="demo-pop" id="demo-pop" hidden>
-  <button type="button" data-demo="compact"><b>旋蒸浓缩 · 自动压缩</b><small>上下文过 85% → auto_compact_started / completed</small></button>
-  <button type="button" data-demo="subagent"><b>无人机外派 · 子 agent</b><small>spawn_subagent → subagent_progress → finished</small></button>
-  <button type="button" data-demo="runaway"><b>失控反应 · 重试与 doom-loop</b><small>retry_state → DoomLoopDetected → 重采样恢复</small></button>
+  <p class="pop-h" id="chap-h">章节</p>
+  <div id="chapters"></div>
 </div>
 
 <div class="dialog" id="dialog" role="dialog" aria-modal="false" hidden></div>
@@ -317,6 +346,7 @@ button { font: inherit; color: inherit; }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script type="application/json" id="trace-data">__TRACE_JSON__</script>
+<script type="application/json" id="demo-data">__DEMO_JSON__</script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 __SCRIPT__

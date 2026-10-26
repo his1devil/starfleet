@@ -30,13 +30,14 @@ const fillGeo = (outer, level, seg = 28) => latheRaw(liquidFill(outer, level).ma
 // ── the long bench on the far wall ──
 function buildBench() {
   const k = new Kit({ tone: 0.4 });
-  const X0 = -100, X1 = 104, Z0 = -92, Z1 = -46, D = Z1 - Z0;
+  const X0 = -160, X1 = 170, Z0 = WALLZ, Z1 = WALLZ + 46, D = Z1 - Z0;
   // carcass, recessed toe kick, worktop with a front lip
   k.box(X1 - X0, 6, D - 5, { p: [(X0 + X1) / 2, FLOOR, Z0 + (D - 5) / 2], color: MAT.graphite, tone: 0.3 });
   k.box(X1 - X0, BENCH - 4 - FLOOR - 6, D - 1, { p: [(X0 + X1) / 2, FLOOR + 6, Z0 + (D - 1) / 2], b: 0.6, color: MAT.pale, tone: 0.4 });
   k.box(X1 - X0 + 2, 4, D + 1, { p: [(X0 + X1) / 2, BENCH - 4, Z0 + (D + 1) / 2], b: 1, color: MAT.enamel, tone: 0.5 });
   // fronts: drawers and doors in three bays, each with a bar pull and a label holder
-  const bays = [[X0 + 2, -36], [-34, 34], [36, X1 - 2]];
+  const bays = [];
+  for (let i = 0; i < 5; i++) bays.push([X0 + 2 + (i * (X1 - X0 - 4)) / 5, X0 + 2 + ((i + 1) * (X1 - X0 - 4)) / 5]);
   for (const [a, b] of bays) {
     const w = b - a - 2, cx = (a + b) / 2;
     for (let i = 0; i < 3; i++) {
@@ -52,15 +53,16 @@ function buildBench() {
   }
   // backsplash with sockets and two gas taps, a shelf with brackets
   k.box(X1 - X0, 16, 1.2, { p: [(X0 + X1) / 2, BENCH, Z0 + 0.6], color: MAT.pale, tone: 0.32 });
-  for (const x of [-60, 12, 70]) { k.box(9, 6, 1, { p: [x, BENCH + 6, Z0 + 1.7], rr: 1, b: 0.3, color: MAT.paper }); k.line([[x - 2, BENCH + 9.5, Z0 + 2.25], [x - 2, BENCH + 8.3, Z0 + 2.25]], 'mid'); k.line([[x + 2, BENCH + 9.5, Z0 + 2.25], [x + 2, BENCH + 8.3, Z0 + 2.25]], 'mid'); }
-  for (const x of [-20, 48]) { k.cyl(1.4, 6, { p: [x, BENCH + 10, Z0 + 2], r: [Math.PI / 2, 0, 0], color: MAT.brass }); k.cyl(2, 1.4, { p: [x, BENCH + 13.2, Z0 + 6.4], color: MAT.hazard, b: 0.3 }); }
-  k.box(X1 - X0 - 4, 1.6, 12, { p: [(X0 + X1) / 2, 158, Z0 + 6.5], b: 0.4, color: MAT.pale, tone: 0.42 });
-  for (const x of [-92, -30, 30, 96]) k.add(new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(10, 0), new THREE.Vector2(0, -8)]), { depth: 1.2, bevelEnabled: false }), { p: [x - 0.6, 158, Z0 + 1.2], r: [0, -Math.PI / 2, 0], color: MAT.steel, tone: 0.4 });
+  for (const x of [-132, -40, 22, 96, 150]) { k.box(9, 6, 1, { p: [x, BENCH + 6, Z0 + 1.7], rr: 1, b: 0.3, color: MAT.paper }); k.line([[x - 2, BENCH + 9.5, Z0 + 2.25], [x - 2, BENCH + 8.3, Z0 + 2.25]], 'mid'); k.line([[x + 2, BENCH + 9.5, Z0 + 2.25], [x + 2, BENCH + 8.3, Z0 + 2.25]], 'mid'); }
+  for (const x of [-60, 64]) { k.cyl(1.4, 6, { p: [x, BENCH + 10, Z0 + 2], r: [Math.PI / 2, 0, 0], color: MAT.brass }); k.cyl(2, 1.4, { p: [x, BENCH + 13.2, Z0 + 6.4], color: MAT.hazard, b: 0.3 }); }
+  const SX0 = -84, SX1 = 104;
+  k.box(SX1 - SX0, 1.6, 12, { p: [(SX0 + SX1) / 2, 158, Z0 + 6.5], b: 0.4, color: MAT.pale, tone: 0.42 });
+  for (const x of [SX0 + 6, 0, SX1 - 6]) k.add(new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(10, 0), new THREE.Vector2(0, -8)]), { depth: 1.2, bevelEnabled: false }), { p: [x - 0.6, 158, Z0 + 1.2], r: [0, -Math.PI / 2, 0], color: MAT.steel, tone: 0.4 });
   // reagent bottles on the shelf
   const bottle = [[0, 0], [3.4, 0], [3.6, 0.4, 1], [3.6, 7, 1], [2.6, 9, 1], [1.5, 9.6], [1.5, 11], [0, 11]];
   const r2 = mulberry32(3);
-  for (let x = -94; x <= 98; x += 9.5) {
-    if (x > -6 && x < 6) continue;
+  for (let x = SX0 + 6; x <= SX1 - 6; x += 9.5) {
+    if (Math.abs(x) < 6) continue;
     const s = 0.8 + r2() * 0.4, tall = r2() > 0.5;
     k.lathe(bottle.map(([r, y, f]) => [r * s, y * s * (tall ? 1.2 : 1), f]), { p: [x, 159.6, Z0 + 6.5], seg: 18, color: r2() > 0.65 ? 0xc8b393 : MAT.paper, tone: 0.42 });
     k.cyl(1.8 * s, 2.2, { p: [x, 159.6 + 11 * s * (tall ? 1.2 : 1), Z0 + 6.5], seg: 14, color: MAT.graphite, b: 0.3, tone: 0.45 });
@@ -72,7 +74,7 @@ function buildBench() {
 // ── storage box along the near side (covers the wheel well) ──
 function buildNearBox() {
   const k = new Kit({ tone: 0.38 });
-  const X0 = -236, X1 = -40, Z0 = 64, Z1 = 92, H = 24;
+  const X0 = VAN.x0 + 4, X1 = -60, Z0 = NEARZ - 28, Z1 = NEARZ, H = 24;
   k.box(X1 - X0, H, Z1 - Z0, { p: [(X0 + X1) / 2, FLOOR, (Z0 + Z1) / 2], b: 1, color: MAT.pale });
   for (let x = X0 + 4; x < X1 - 30; x += 49) {
     k.box(45, 18, 1, { p: [x + 22.5, FLOOR + 3, Z0 - 0.5], b: 0.4, color: MAT.paper, tone: 0.4 });
@@ -83,7 +85,7 @@ function buildNearBox() {
 }
 
 // ── 1 · the context tower: a graduated column whose level is the context window ──
-const TOWER = { x: -114, z: -72, y0: FLOOR + 10, h: 104, r: 9 };
+const TOWER = { x: -172, z: -86, y0: FLOOR + 10, h: 104, r: 9 };
 // log scale for the tower: 0.1 % → 0, 100 % → 1
 const ctxFrac = r => clamp((Math.log10(Math.max(r, 1e-3)) + 3) / 3, 0, 1);
 station('tower', {
@@ -114,7 +116,7 @@ station('tower', {
     k.line([[x - r - 0.9, y0 + h - 4, z + 3.42], [x - r - 3.5, y0 + h - 4, z + 3.42]], 'hi');
     k.torus(r + 0.35, 0.55, { p: [x, y0 + 4 + ctxFrac(0.85) * (h - 8), z], tub: 48, color: MAT.redlamp, paint: 1, tone: 0.9 });
     // wall brackets
-    for (const y of [y0 + 30, y0 + h - 20]) { k.torus(r + 0.6, 0.9, { p: [x, y, z], tub: 40, color: MAT.steel }); k.box(2.4, 2.4, 14, { p: [x, y - 1.2, z - r - 7], color: MAT.steel }); k.box(10, 10, 1.2, { p: [x, y - 5, -91.4], rr: 1, b: 0.3, color: MAT.pale }); }
+    for (const y of [y0 + 30, y0 + h - 20]) { k.torus(r + 0.6, 0.9, { p: [x, y, z], tub: 40, color: MAT.steel }); k.box(2.4, 2.4, z - r - WALLZ, { p: [x, y - 1.2, (z - r + WALLZ) / 2], color: MAT.steel }); k.box(10, 10, 1.2, { p: [x, y - 5, WALLZ + 0.6], rr: 1, b: 0.3, color: MAT.pale }); }
     k.finish(g);
     // live: the liquid and its meniscus
     const liquid = mesh(cylGeo(r - 0.5, 1, 0, 40), fluidMat(FLUID.context), g, [x, y0 + 0.4, z], [0, 0, 0], { tone: 0.75 });
@@ -133,12 +135,12 @@ station('tower', {
 });
 
 // ── 2 · the reactor: the model ──
-const REACT = { x: -72, z: -70, y: BENCH };
+const REACT = { x: -116, z: -84, y: BENCH };
 const JACK = 6, FLASK = { r: 11, cy: REACT.y + 23.2 };
 // outer wall of the round-bottom flask (sphere) for the liquid fill
 const FLASK_WALL = (() => { const p = []; for (let i = 0; i <= 16; i++) { const a = -Math.PI / 2 + (i / 16) * Math.PI * 0.86; p.push([FLASK.r * Math.cos(a), FLASK.cy + FLASK.r * Math.sin(a)]); } return p; })();
 const ERLEN = [[0, 0], [7, 0], [7.2, 0.6, 1], [3, 12], [2.2, 15], [2.2, 17.5]];
-const RECV = { a: [-40, -60], b: [-40, -79] };
+const RECV = { a: [REACT.x + 30, REACT.z + 10], b: [REACT.x + 30, REACT.z - 9] };
 station('reactor', {
   name: '反应釜', role: '模型推理 · 每次请求', color: FLUID.reason,
   desc: '三口圆底烧瓶坐在加热套里。请求开始时泵把储液塔的液体送进来、加热套升温；第一滴冷凝液就是首 token（TTFT）。推理时紫色蒸汽在回流冷凝管里上升又滴回；写正文时活塞拨向蒸馏支管，蓝色液滴落进产物瓶。工具调用会从侧口析出一枚橙色工单。',
@@ -186,7 +188,7 @@ station('reactor', {
     });
     // still head on the right neck, the descending Liebig condenser and the swing spout
     k.add(tubeGeo([[x + 9.3, FLASK.cy + 16, z], [x + 12, FLASK.cy + 21, z], [x + 16, FLASK.cy + 21, z]], 1.3, { bend: 2.5 }), { glass: true });
-    const L0 = V(x + 16, FLASK.cy + 21, z), L1 = V(RECV.a[0], FLASK.cy + 6, -70);
+    const L0 = V(x + 16, FLASK.cy + 21, z), L1 = V(RECV.a[0], FLASK.cy + 6, z);
     k.add(tubeGeo([L0, L1], 2.6, { radial: 16 }), { glass: true });
     k.add(tubeGeo([L0.clone().lerp(L1, -0.06), L1.clone().lerp(L0, -0.08)], 1.1, { radial: 10 }), { glass: true });
     k.tube([L1, V(L1.x, L1.y - 2.5, L1.z)], 0.9, { color: MAT.paper, tone: 0.6 });
@@ -194,7 +196,7 @@ station('reactor', {
     // receivers: reasoning (violet) and product (blue) Erlenmeyers on a cork ring each
     for (const [rx, rz] of [RECV.a, RECV.b]) { k.torus(5.4, 0.9, { p: [rx, y + 0.9, rz], tub: 28, color: MAT.cork, tone: 0.4 }); k.add(latheGeo(ERLEN, 28), { p: [rx, y + 1.2, rz], glass: true }); k.torus(2.3, 0.3, { p: [rx, y + 1.2 + 17.5, rz], tub: 20, color: MAT.pale, tone: 0.6 }); }
     // controller on the wall above the bench: screen, two knobs, a lamp, a cable down to the mantle
-    const cx = x - 21, cy = y + 24, cz = -88;
+    const cx = x - 21, cy = y + 24, cz = WALLZ + 3;
     k.box(18, 13, 6, { p: [cx, cy, cz], rr: 1.5, b: 0.6, color: MAT.pale, tone: 0.5 });
     for (const dx of [-4.5, 4.5]) k.cyl(1.7, 1.5, { p: [cx + dx, cy + 3, cz + 3], r: [Math.PI / 2, 0, 0], color: MAT.graphite, b: 0.3 });
     for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) k.screw(cx + sx * 7.6, cy + 6.5 + sy * 5, cz + 3, { axis: 'z', r: 0.35 });
@@ -252,19 +254,20 @@ station('reactor', {
 });
 
 // ── 3 · the peristaltic pump: context → reactor ──
+const PUMP = { x: -148, z: -74 };
 station('pump', {
   name: '蠕动泵', role: '模型请求 · loop_started', color: FLUID.context,
   desc: '每次模型请求（loop_started）开始时，泵从储液塔底部抽出当前上下文，经软管送进反应釜的加料漏斗。转子转多久，取决于这次请求要送多少上下文。',
-  work: [-94, BENCH + 30, -40], pin: [-96, BENCH + 22, -58],
+  work: [PUMP.x, BENCH + 30, PUMP.z + 22], pin: [PUMP.x - 2, BENCH + 22, PUMP.z + 2],
   build(S, g) {
-    const x = -94, z = -60, y = BENCH, k = new Kit({ tone: 0.55 });
+    const { x, z } = PUMP, y = BENCH, k = new Kit({ tone: 0.55 });
     k.box(16, 12, 14, { p: [x, y, z], rr: 1.5, b: 0.6, color: MAT.pale });
     k.cyl(5.6, 1.2, { p: [x, y + 6, z + 7], r: [Math.PI / 2, 0, 0], color: MAT.steel, b: 0.3 });
     k.box(4, 2, 1, { p: [x - 4, y + 1.8, z + 7.1], color: MAT.graphite });
     k.line(ringPts(x, y + 6, z + 8.32, 5.7, 32, 'z'), 'mid');
     // hose: tower outlet → pump → funnel
-    k.tube([[TOWER.x, TOWER.y0 - 5, TOWER.z + TOWER.r + 13], [TOWER.x + 4, BENCH + 4, -52], [x - 8, y + 6, z + 9], [x - 4, y + 6, z + 9.6]], 0.9, { color: MAT.rubber, tone: 0.5, bend: 6, radial: 8 });
-    k.tube([[x + 4, y + 6, z + 9.6], [x + 9, y + 9, z + 8], [-82, FLASK.cy + 40, -70]], 0.75, { color: MAT.rubber, tone: 0.5, bend: 6, radial: 8 });
+    k.tube([[TOWER.x, TOWER.y0 - 5, TOWER.z + TOWER.r + 13], [TOWER.x + 6, BENCH + 4, z + 15], [x - 8, y + 6, z + 9], [x - 4, y + 6, z + 9.6]], 0.9, { color: MAT.rubber, tone: 0.5, bend: 6, radial: 8 });
+    k.tube([[x + 4, y + 6, z + 9.6], [x + 9, y + 9, z + 8], [REACT.x - 16, FLASK.cy + 40, REACT.z]], 0.75, { color: MAT.rubber, tone: 0.5, bend: 6, radial: 8 });
     k.finish(g);
     const rotor = group(g, [x, y + 6, z + 8.3]);
     const rk = new Kit({ tone: 0.6 });

@@ -1,6 +1,10 @@
 """Extract turns of a grok-build session into a compact, normalized trace
-(ATE v0) for the Starfleet prototype. Merges events.jsonl + updates.jsonl,
+(ATE v1) for the Starfleet prototype. Merges events.jsonl + updates.jsonl,
 rewrites the home directory to ~ and truncates long text.
+
+The busy event types get short names (turn.start, tool.call, k, ...); every other
+events.jsonl type passes through as `e.<type>`, the other ACP updates as
+`acp.<type>` and the xAI extensions as `x.<type>`, with their fields kept.
 
 Usage:
   python3 tools/extract_grok_trace.py --session <session-dir> --turns 0,4,8 --out prototype/data/sample-trace.json
@@ -32,6 +36,17 @@ def clean(s, n=None):
     if n and len(s) > n:
         s = s[:n].rstrip() + '…'
     return s
+
+
+def deep_clean(v, n=200, depth=0):
+    """Clean every string in a JSON value, cap long strings and long lists."""
+    if isinstance(v, str):
+        return clean(v, n)
+    if isinstance(v, list):
+        return [deep_clean(x, n, depth + 1) for x in v[:12]]
+    if isinstance(v, dict):
+        return {k: deep_clean(x, n, depth + 1) for k, x in v.items() if depth < 4}
+    return v
 
 
 def iso_ms(s):
@@ -131,15 +146,16 @@ def norm_turn(n, recs):
             elif t == 'turn_ended':
                 out.append([dt, 'turn.end', {'outcome': o['outcome'],
                                              'cancel': o.get('cancellation_category')}])
-            elif t.startswith('mcp_'):
-                if t == 'mcp_server_connected':
-                    out.append([dt, 'mcp.connected', {'server': o['server_name'], 'tools': o['tool_count'],
-                                                      'ms': o['duration_ms'], 'transport': o['transport']}])
-                elif t == 'mcp_server_starting':
-                    out.append([dt, 'mcp.starting', {'server': o['server_name'], 'transport': o['transport']}])
-                elif t == 'mcp_init_completed':
-                    out.append([dt, 'mcp.ready', {'servers': o['total_servers'], 'tools': o['total_tools'],
-                                                  'ms': o['duration_ms']}])
+            elif t == 'mcp_server_connected':
+                out.append([dt, 'mcp.connected', {'server': o['server_name'], 'tools': o['tool_count'],
+                                                  'ms': o['duration_ms'], 'transport': o['transport']}])
+            elif t == 'mcp_server_starting':
+                out.append([dt, 'mcp.starting', {'server': o['server_name'], 'transport': o['transport']}])
+            elif t == 'mcp_init_completed':
+                out.append([dt, 'mcp.ready', {'servers': o['total_servers'], 'tools': o['total_tools'],
+                                              'ms': o['duration_ms']}])
+            else:
+                out.append([dt, 'e.' + t, deep_clean({k: v for k, v in o.items() if k not in ('ts', 'type', 'session_id')})])
             continue
         p = o.get('params') or {}
         u = p.get('update') or {}
@@ -205,8 +221,18 @@ def norm_turn(n, recs):
             out.append([dt, 'tool.update', d])
         elif su == 'turn_completed':
             out.append([dt, 'turn.completed', {'stop': u.get('stop_reason'), 'usage': u.get('usage')}])
+        elif su == 'plan':
+            out.append([dt, 'acp.plan', {'entries': [{'content': clean(x.get('content'), 120), 'status': x.get('status'),
+                                                      'priority': x.get('priority')} for x in u.get('entries', [])[:12]]}])
+        elif su == 'available_commands_update':
+            out.append([dt, 'acp.available_commands_update',
+                        {'commands': [c.get('name') for c in u.get('availableCommands', [])][:40]}])
+        elif su == 'current_mode_update':
+            out.append([dt, 'acp.current_mode_update', {'mode': u.get('currentModeId')}])
+        elif su == 'session_info_update':
+            out.append([dt, 'acp.session_info_update', {'title': clean(u.get('title'), 80)}])
         elif su:
-            out.append([dt, 'x.' + su, {k: clean(str(v), 200) for k, v in u.items() if k != 'sessionUpdate'}])
+            out.append([dt, 'x.' + su, deep_clean({k: v for k, v in u.items() if k != 'sessionUpdate'})])
     # drop idle-time noise (e.g. MCP re-inits) that lands after the turn finished
     end = next((e[0] for e in out if e[1] == 'turn.completed'), None)
     if end is not None:
@@ -243,7 +269,7 @@ for f in glob.glob(os.path.join(SESS_ROOT, '*', '*', 'signals.json')):
 n_sessions = len(glob.glob(os.path.join(SESS_ROOT, '*', '*', 'events.jsonl')))
 
 trace = {
-    'v': 0,
+    'v': 1,
     'source': {'agent': 'grok-build', 'version': '0.2.106', 'adapter': 'grok-files'},
     'session': {
         'id': summary['info']['id'],

@@ -4,10 +4,10 @@ const CAM_GOAL = { az: CAM.az, el: CAM.el, zoom: CAM.zoom, target: CAM.target.cl
 let camMode = 'follow', userZoom = 1, camStation = null, userTouched = false;
 const camDir = (az, el) => V(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
 function freeArea() {
-  const narrow = innerWidth <= 860;
-  const left = narrow ? 0 : ($('#notebook')?.getBoundingClientRect().right ?? 0);
-  const rightEl = $('#instruments')?.getBoundingClientRect();
-  const right = narrow || !rightEl ? 0 : innerWidth - rightEl.left;
+  const narrow = innerWidth <= 860, hidden = document.body.dataset.panels === 'hide';
+  const leftEl = $('#notebook')?.getBoundingClientRect(), rightEl = $('#instruments')?.getBoundingClientRect();
+  const left = narrow || hidden || !leftEl?.width ? 0 : leftEl.right;
+  const right = narrow || hidden || !rightEl?.width ? 0 : innerWidth - rightEl.left;
   const top = 48, bottom = narrow ? 84 : 76;
   return { left, right, top, bottom, w: Math.max(200, innerWidth - left - right - 20), h: Math.max(200, innerHeight - top - bottom) };
 }
@@ -30,8 +30,9 @@ function fitZoom(pts, az, el, pad = 1.08) {
   cc.addScaledVector(right, mx - c.dot(right)).addScaledVector(up, my - c.dot(up));
   return { zoom: Math.max(hFromW, hFromH) * pad, center: cc };
 }
-const VAN_BOX = (() => { const pts = []; for (const x of [-322, 322]) for (const y of [-18, ROOF + 4]) for (const z of [-172, 172]) pts.push(V(x, y, z)); return pts; })();
-const FOLLOW_ZOOM = () => (innerWidth / innerHeight < 0.8 ? 380 : innerWidth <= 860 ? 280 : 215);
+// the overview frames the van itself; the display base may run off the edges a little
+const VAN_BOX = (() => { const pts = []; for (const x of [VAN.x0 - 24, VAN.x1 + 14]) for (const y of [-12, ROOF + 8]) for (const z of [-VAN.z - 20, VAN.z + 40]) pts.push(V(x, y, z)); return pts; })();
+const FOLLOW_ZOOM = () => (innerWidth / innerHeight < 0.8 ? 400 : innerWidth <= 860 ? 300 : 235);
 const tmpF = V();
 function updateCamera(dt) {
   if (camMode === 'overview') { const f = fitZoom(VAN_BOX, CAM_GOAL.az, CAM_GOAL.el, 1.04); CAM_GOAL.zoom = f.zoom * userZoom; CAM_GOAL.target.copy(f.center); }
@@ -69,6 +70,8 @@ function paintPause() {
 }
 pauseBtn.addEventListener('click', () => { clock.paused = !clock.paused; paintPause(); });
 $('#xray').addEventListener('input', ev => setXray(+ev.target.value / 100));
+// hide both side panels to give the drawing the whole window
+$('#panels-btn').addEventListener('click', ev => { const hide = document.body.dataset.panels !== 'hide'; document.body.dataset.panels = hide ? 'hide' : ''; ev.currentTarget.setAttribute('aria-pressed', String(!hide)); hud.stats(); });
 $('#pins-btn').addEventListener('click', ev => { const on = ev.currentTarget.getAttribute('aria-pressed') !== 'true'; ev.currentTarget.setAttribute('aria-pressed', String(on)); pinsEl.classList.toggle('hide', !on); });
 $('#theme-btn').addEventListener('click', () => { const next = THEME === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; applyTheme(next); hud.stats(); });
 new MutationObserver(() => { const t = detectTheme(); if (t !== THEME) { applyTheme(t); hud.stats(); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -76,9 +79,17 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { co
 const demoPop = $('#demo-pop'), demoBtn = $('#demo-btn');
 demoBtn.addEventListener('click', () => { demoPop.hidden = !demoPop.hidden; demoBtn.setAttribute('aria-expanded', String(!demoPop.hidden)); });
 demoPop.addEventListener('click', ev => {
-  const b = ev.target.closest('button[data-demo]'); if (!b || demoBusy[b.dataset.demo]) return;
-  demoBusy[b.dataset.demo] = true; b.disabled = true; demoPop.hidden = true; demoBtn.setAttribute('aria-expanded', 'false');
-  DEMOS[b.dataset.demo]();
+  const b = ev.target.closest('button[data-ti]'); if (!b) return;
+  demoPop.hidden = true; demoBtn.setAttribute('aria-expanded', 'false');
+  jumpTo(+b.dataset.ti);
+});
+$('#src-seg').addEventListener('click', ev => { const b = ev.target.closest('button[data-src]'); if (b) switchSource(b.dataset.src); });
+$('#rtabs').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-tab]'); if (!b) return;
+  const codex = b.dataset.tab === 'codex';
+  $('#codex-pane').hidden = !codex; $('#ins-pane').hidden = codex; $('#rp-title').textContent = codex ? '图鉴' : '仪表';
+  document.querySelectorAll('#rtabs button').forEach(x => { const on = x === b; x.setAttribute('aria-pressed', String(on)); x.setAttribute('aria-selected', String(on)); });
+  if (codex) renderCodex(true); else hud.stats();
 });
 document.querySelectorAll('.capsule button[data-sheet]').forEach(b => b.addEventListener('click', () => {
   const on = document.body.dataset.sheet === b.dataset.sheet ? '' : b.dataset.sheet;
@@ -148,7 +159,7 @@ function step(dtReal, now) {
   fx.drops.update(dt); fx.puffs.update(dt);
   updateReceivers(dt);
   hudT -= dtReal;
-  if (hudT <= 0) { hudT = 0.25; readout(); if (stats.tps) ST.cab.refs.speedo.paint({ v: stats.tps }); }
+  if (hudT <= 0) { hudT = 0.25; readout(); renderCodex(); if (stats.tps) ST.cab.refs.speedo.paint({ v: stats.tps }); }
 }
 function frame(now) {
   const dtReal = Math.min(0.05, (now - last) / 1000 || 0); last = now;
@@ -166,17 +177,16 @@ function start(data = {}) {
   // the freezer starts with every turn this machine has already run
   for (let i = 0; i < ARCHIVE.turns && i < FR_SLOTS.length; i++) ST.archive.refs.put(i, FLUID.text, i % 7 === 3 ? 0xffcf1a : 0x2f7bff);
   ST.archive.refs.scr.paint({ n: ARCHIVE.turns });
-  $('#corner-title').textContent = `Starfleet · ${TRACE.source?.agent || 'grok-build'} · ${SESSION.model || '—'}`;
-  $('#nb-src').textContent = `录制回放 · ${PROJECT}`;
-  $('#ins-sub').textContent = PROJECT;
+  paintSource(); renderChapters(); renderCodex(true);
+  ST.sign.refs.scr.paint({ t: SESSION.title || 'MV-01' });
   if (data.speed) setSpeed(data.speed);
   // open on the whole van (that first still is the page's thumbnail), then move in to follow the arm
   setView(data.view === 'follow' ? 'follow' : 'overview');
   if (data.view !== 'overview') afterReal(3.2, () => { if (camMode === 'overview' && !userTouched) setView('follow'); });
   hud.stats(); hud.run(null, null); hud.archive(); paintPause(); renderStations(); paintGauges();
   setCtx(0); hud.ctx(0, false); $('#ctx-num').textContent = '等待首条更新'; $('#ctx-pct').textContent = '—'; ST.tower.refs.level = 0;
-  feed('sys', '开机', `MV-01 开始监控 ${PROJECT} · ${SESSION.model} · 录制回放；接上实时数据后同一辆车直接用`, null);
-  toast('实时监控', `${PROJECT} · 录制回放（${TRACE.turns.length - 1} 个回合）`);
+  feed('sys', '开机', `MV-01 · ${SRC_NAME[SRC]} · ${PROJECT} · ${SESSION.model}；接上实时数据后同一辆车直接用`, null);
+  toast(SRC_NAME[SRC], `${PROJECT} · ${TRACE.turns.length - 1} 个回合 · 右上「图鉴」看事件覆盖`);
   snapCamera();
   document.fonts?.ready?.then(() => { for (const f of THEMED) f(PALETTES[THEME], THEME); });
   requestAnimationFrame(now => { last = now; requestAnimationFrame(frame); });
@@ -188,7 +198,9 @@ window.__starfleet = {
   view(v, opts = {}) { if (opts.az != null) CAM_GOAL.az = opts.az * DEG; if (opts.el != null) CAM_GOAL.el = opts.el * DEG; if (v === 'at') { camMode = 'fixed'; CAM_GOAL.target.set(...opts.target); CAM_GOAL.zoom = opts.zoom; } else setView(v); snapCamera(); updatePins(); renderFrame(); },
   theme(t) { document.documentElement.dataset.theme = t; applyTheme(t); renderFrame(); },
   xray(v) { setXray(v); renderFrame(); },
-  demo(name) { demoBusy[name] = true; setDemoBtn(name, true); DEMOS[name](); },
+  jump: ti => jumpTo(ti),
+  source: name => switchSource(name),
+  codex: () => ({ seen: CODEX.filter(c => SEEN.has(c[0])).length, total: CODEX.length, missing: CODEX.filter(c => !SEEN.has(c[0])).map(c => c[0]) }),
   speed: setSpeed,
   state: () => ({ vt: clock.vt, cursor, total: TL.length, robot: ROBOT.text, mode: ROBOT.mode, tasks: ROBOT.tasks.length, turn: S_.turn, archive: ARCHIVE.turns }),
 };
