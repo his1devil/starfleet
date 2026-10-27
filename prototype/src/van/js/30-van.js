@@ -5,23 +5,9 @@ const VAN = { x0: -300, x1: 300, z: 108, wall: 3, roof: 236, bottom: 36, wheelR:
 const FLOOR = 52, BENCH = 122, ROOF = VAN.roof, FX = 176;
 const WALLZ = -(VAN.z - VAN.wall);   // inner face of the far wall
 const NEARZ = VAN.z - VAN.wall;      // inner face of the near wall
-const world = group(scene);
 const ghostParts = [], ghostLines = [];
-
-function ringPts(cx, y, cz, r, n = 24, axis = 'y') {
-  const pts = [];
-  for (let i = 0; i <= n; i++) {
-    const a = (i / n) * TAU, c = Math.cos(a) * r, s = Math.sin(a) * r;
-    pts.push(axis === 'y' ? [cx + c, y, cz + s] : axis === 'z' ? [cx + c, y + s, cz] : [cx, y + c, cz + s]);
-  }
-  return pts;
-}
-function haloTexture(w, h, r, blur) {
-  const pad = blur * 2, c = mkCanvas(w + pad * 2, h + pad * 2), g = c.getContext('2d');
-  g.filter = `blur(${blur}px)`; g.fillStyle = '#000';
-  g.beginPath(); g.roundRect(pad, pad, w, h, r); g.fill();
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return { tex: t, sw: (w + pad * 2) / w, sh: (h + pad * 2) / h };
-}
+// words the shared HUD uses for this scene
+const WORDS = { place: '在车里', unit: '瓶' };
 
 const BASE = { W: VAN.x1 - VAN.x0 + 72, D: VAN.z * 2 + 104, T: 10 };
 function buildBase() {

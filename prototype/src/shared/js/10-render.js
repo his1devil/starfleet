@@ -167,6 +167,7 @@ const LINE_M = {
   hi: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.95 }),
   mid: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 }),
   lo: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.32 }),
+  faint: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.15 }),
   ghost: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.3, depthTest: false }),
 };
 
@@ -247,6 +248,7 @@ function makeTargets() {
 }
 makeTargets();
 
+const OVERLAY = new THREE.Scene();
 function renderFrame() {
   const u = COMP.uniforms;
   u.uDepthK.value = camera.far - camera.near;
@@ -266,6 +268,8 @@ function renderFrame() {
   camera.layers.enable(1);
   renderer.setRenderTarget(null);
   renderer.render(compScene, compCam);
+  // floating signs go over the inked drawing, so its lines never cross their text
+  if (OVERLAY.children.length) { renderer.autoClear = false; renderer.clearDepth(); renderer.render(OVERLAY, camera); renderer.autoClear = true; }
 }
 
 // theme: one token set feeds the paper, the ink, the glass and the HUD

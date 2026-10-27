@@ -8,8 +8,14 @@ const countedTurns = new Set();
 const timers = [], realTimers = [];
 const after = (sec, fn) => timers.push({ t: sec, fn });
 const afterReal = (sec, fn) => realTimers.push({ t: sec, fn });
-function runTimers(list, dt) { for (let i = list.length - 1; i >= 0; i--) { list[i].t -= dt; if (list[i].t <= 0) { const tm = list.splice(i, 1)[0]; try { tm.fn(); } catch (err) { console.error(err); } } } }
+// a timer may clear the list it is on (a jump settles the scene), so each step re-checks what is left
+function runTimers(list, dt) { for (let i = list.length - 1; i >= 0; i--) { const tm = list[i]; if (!tm) continue; tm.t -= dt; if (tm.t <= 0) { list.splice(i, 1); try { tm.fn(); } catch (err) { console.error(err); } } } }
 
+// the codex names van stations directly
+function codexStation(k) { return k; }
+function inspectRobot() {
+  openInspector('龙门机器人 · agent', `<p>机器人就是正在干活的 agent：从反应釜（模型）取出工单，经安全联锁送到对应仪器，再把结果倒回储液塔（上下文）。它的指示环：灰色待命，青色忙碌，黄色闪烁是在等你，红色是出错。</p><dl><dt>当前</dt><dd>${esc(ROBOT.text)}</dd><dt>排队</dt><dd>${ROBOT.tasks.length} 项</dd><dt>位置</dt><dd>${ROBOT.at ? esc(ST[ROBOT.at]?.name || ROBOT.at) : '—'}</dd></dl>`);
+}
 function stationForTool(name = '', kind, ns) {
   if (name === 'ask_user_question' || kind === 'ask_user') return 'radio';
   if (name === 'enter_plan_mode' || name === 'exit_plan_mode') return 'mode';
@@ -669,7 +675,7 @@ function settleScene() {
   ROBOT.tasks.length = 0; ROBOT.task = null; ROBOT.tw = null; ROBOT.wait = 0; ROBOT.pour = null; ROBOT.gripGoal = 0;
   if (ROBOT.held) { ROBOT.held.removeFromParent(); ROBOT.held = null; }
   for (const v of SPAWNED) v.removeFromParent();
-  SPAWNED.clear(); timers.length = 0; S_.forming = null;
+  SPAWNED.clear(); timers.length = 0; realTimers.length = 0; S_.forming = null;
   const D = ST.dock.refs; D.flight = null; D.drone.visible = true; D.drone.position.copy(D.home); D.drone.children.filter(c => c.userData.vial).forEach(c => c.removeFromParent());
   const R = ST.reactor.refs; R.heatGoal = 0; R.mode = null; R.runaway = false; R.bz = 0;
   const I = ST.incubator.refs; I.shakeGoal = 0; I.running = false;

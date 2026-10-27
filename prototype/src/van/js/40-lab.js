@@ -1,32 +1,4 @@
 // ═════════════════════════ the lab: stations along the walls ═════════════════════════
-// Each station is a group of static kit parts plus a few live parts, a work point the gantry's
-// gripper visits, and a pin point for its numbered marker.
-const ST = {}, ST_LIST = [];
-const STATE_TXT = { idle: '待机', busy: '工作中', wait: '等待', error: '异常' };
-function station(id, def) {
-  const S = { id, n: ST_LIST.length + 1, lit: 0, litGoal: 0, state: 'idle', stateUntil: 0, status: '', events: [], uses: 0, ...def };
-  S.g = group(world);
-  S.refs = def.build(S, S.g) || {};
-  S.g.traverse(o => { if (o.isMesh) o.userData.station = S; });
-  S.work = V(...def.work); S.pin = V(...def.pin);
-  ST[id] = S; ST_LIST.push(S);
-  return S;
-}
-const fx = { drops: null, puffs: null };
-function liquidFill(profileOuter, level) {
-  // a solid of revolution filled from the bottom of a vessel profile [[r, y]...] (outer wall, bottom → top) to `level`
-  const P = [[0, profileOuter[0][1]]];
-  for (let i = 0; i < profileOuter.length; i++) {
-    const [r, y] = profileOuter[i];
-    if (y >= level) { const [r0, y0] = profileOuter[i - 1] || [r, y]; const t = (level - y0) / Math.max(1e-6, y - y0); P.push([lerp(r0, r, t), level]); break; }
-    P.push([r, y, 1]);
-  }
-  P.push([0, P[P.length - 1][1]]);
-  return P;
-}
-// live fills change every few frames, so they are built fresh rather than memoised
-const fillGeo = (outer, level, seg = 28) => latheRaw(liquidFill(outer, level).map(([r, y, s]) => [Math.max(0, r - 0.25), y, s]), seg);
-
 // ── the long bench on the far wall ──
 function buildBench() {
   const k = new Kit({ tone: 0.4 });

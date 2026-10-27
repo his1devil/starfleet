@@ -27,15 +27,62 @@ T0 = 1793000000000  # an arbitrary epoch in ms; only differences matter
 WINDOW = 1048576
 
 
+# The model-visible context, segment by segment, in the same shape extract_grok_trace.py writes:
+# [kind, tokens, turn, label]. The preamble is a system prompt and user_info; turn 1 opens with the
+# skills and MCP reminders; when a staged turn starts bigger than what the segments add up to, the
+# gap is an 'older' block (earlier conversation the demo does not spell out).
+SEGS = [['sys', 1040, -1, 'system_prompt'], ['info', 128, -1, 'user_info']]
+TOOLS_TOK = 7424
+SKILLS = ['check-work', 'create-skill', 'commit', 'review-pr', 'lab-report']
+MCP_LIST = [{'name': 'lab-inventory', 'tools': 9}, {'name': 'docs-search', 'tools': 4}]
+
+
+def est(s):
+    s = s if isinstance(s, str) else json.dumps(s, ensure_ascii=False)
+    a = sum(1 for ch in s if ord(ch) < 128)
+    return max(1, round(a / 4 + (len(s) - a) / 1.5))
+
+
+def seg_total():
+    tot = TOOLS_TOK
+    for k, tok, _, _ in SEGS:
+        tot = (TOOLS_TOK + sum(x[1] for x in SEGS if x[0] in ('sys', 'info'))) if k == 'summary' else tot
+        tot += tok
+    return tot
+
+
+def track(T, typ, d):
+    if typ == 'turn.start':
+        if T.n == 1:
+            SEGS.append(['rem', 612, 1, 'skills'])
+            SEGS.append(['rem', 396, 1, 'mcp+'])
+        gap = T.ctx - seg_total()
+        if gap > 60:
+            SEGS.append(['older', gap, T.n, 'history'])
+    elif typ == 'user.message':
+        SEGS.append(['user', est(d.get('text', '')) + 8, T.n, 'query'])
+    elif typ in ('stream.thought', 'stream.text'):
+        SEGS.append(['think' if typ == 'stream.thought' else 'text', max(12, (d.get('len') or 0) // 3 + T.burst), T.n,
+                     'reasoning' if typ == 'stream.thought' else MODEL])
+    elif typ == 'tool.call':
+        SEGS.append(['call', est(d.get('input') or {}) + 12, T.n, d.get('name')])
+    elif typ == 'tool.update' and d.get('status') in ('completed', 'failed'):
+        SEGS.append(['result', est(d.get('output') or '') + 20, T.n, d.get('name')])
+    elif typ == 'x.auto_compact_completed':
+        SEGS.append(['summary', d.get('tokens_after', 0) - TOOLS_TOK - 1168, T.n, 'compact'])
+
+
 class Turn:
     def __init__(self, n, t0, chapter=''):
         self.n, self.t0, self.t, self.ev = n, t0, 0, []
         self.ctx = 0
+        self.burst = 0
         self.chapter = chapter
 
     def add(self, typ, data=None, dt=0):
         self.t += dt
         self.ev.append([int(self.t), typ, data if data is not None else {}])
+        track(self, typ, data if data is not None else {})
         return self
 
     def wait(self, dt):
@@ -46,6 +93,7 @@ class Turn:
         for _ in range(n):
             self.t += R.uniform(*ms)
             self.ev.append([int(self.t), 'k', ch])
+        self.burst = n * 3
         return self
 
     def dump(self):
@@ -66,7 +114,7 @@ def request(T, i, think='', text='', r=30, t=0, ttft=(1800, 3600), cache=0.85):
     T.add('phase', {'phase': 'waiting_for_model'}, 5)
     inp = T.ctx + R.randint(800, 2400)
     T.add('x.response_started', {'message_id': f'msg_{T.n}_{i}', 'model': MODEL, 'input_tokens': inp,
-                                 'cache_read_input_tokens': int(inp * cache), 'cache_creation_input_tokens': R.randint(200, 900)}, 120)
+                                 'cache_read_input_tokens': int(inp * cache) // 256 * 256, 'cache_creation_input_tokens': R.randint(200, 900)}, 120)
     T.add('request.first_token', {}, R.randint(*ttft))
     if r:
         T.add('phase', {'phase': 'streaming_reasoning'}, 5)
@@ -146,7 +194,7 @@ def finish(T, out_tokens=0, calls=1, stop='end_turn'):
     hook(T, 'stop')
     T.add('turn.end', {'outcome': 'completed', 'cancel': None}, 40)
     inp = T.ctx
-    usage = {'inputTokens': inp * calls // 2, 'outputTokens': out_tokens or R.randint(600, 2400), 'cachedReadTokens': int(inp * calls // 2 * 0.86),
+    usage = {'inputTokens': inp * calls // 2, 'outputTokens': out_tokens or R.randint(600, 2400), 'cachedReadTokens': int(inp * calls // 2 * 0.86) // 256 * 256,
              'reasoningTokens': R.randint(200, 900), 'modelCalls': calls, 'apiDurationMs': R.randint(9000, 40000), 'numTurns': calls}
     usage['totalTokens'] = usage['inputTokens'] + usage['outputTokens']
     T.add('turn.completed', {'stop': stop, 'usage': usage}, 20)
@@ -502,6 +550,8 @@ trace = {
     'source': {'agent': 'grok-build', 'version': '0.2.106', 'adapter': 'demo', 'synthetic': True},
     'session': {'id': SESSION_ID, 'cwd': '~/lab/mv01', 'title': '冰柜温度报警脚本（演示）', 'model': MODEL, 'agent': 'grok-build',
                 'branch': 'main', 'contextWindow': WINDOW, 'turnCount': 8},
+    'context': {'segments': SEGS, 'toolsTok': TOOLS_TOK, 'skills': SKILLS, 'mcp': MCP_LIST, 'agentsMd': 1, 'memory': True,
+                'personas': 0, 'promptMode': 'extend'},
     'turns': [t.dump() for t in turns],
 }
 s = json.dumps(trace, ensure_ascii=False, separators=(',', ':'))

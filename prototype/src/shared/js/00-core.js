@@ -126,6 +126,8 @@ const MAT = { // albedo multipliers for painted parts (sRGB); "paper" parts take
   paper: 0xffffff, pale: 0xf1f1ef, steel: 0xd5dae0, alu: 0xe6e8ea, graphite: 0x55575d, rubber: 0x3a3b40, hose: 0xc4baa8, brass: 0xd2b072, copper: 0xd09068,
   cork: 0xd8c3a0, enamel: 0xf6f6f2, hazard: 0xf2c230, hazardK: 0x2a2a2e, redlamp: 0xe8233a, greenlamp: 0x26c75a, amberlamp: 0xffa31a,
 };
+// the 14 hook events in the order the grok-build source declares them
+const HOOK_EVENTS = ['session_start', 'user_prompt_submit', 'pre_tool_use', 'post_tool_use', 'post_tool_use_failure', 'permission_denied', 'stop', 'stop_failure', 'notification', 'subagent_start', 'subagent_stop', 'pre_compact', 'post_compact', 'session_end'];
 let THEME = 'light';
 // the replay's wall clock (the recorded time of the event being shown); the director advances it
 let REAL_NOW = TRACE?.turns?.[0]?.t0 || Date.now();

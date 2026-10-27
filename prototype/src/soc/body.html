@@ -1,0 +1,113 @@
+<canvas id="scene" tabindex="0" aria-label="HX-1 运行时芯片：grok-build 的 harness 画成一颗芯片，真实会话的数据在各个模块之间流动"></canvas>
+<div id="pins" aria-hidden="true"></div>
+
+<div class="frame" aria-hidden="false">
+  <span class="corner fig">Fig 3 · <b>HX-1</b> 运行时芯片</span>
+  <span class="corner title" id="corner-title">Starfleet · grok-build</span>
+  <span class="corner hint">拖动转向 · 滚轮缩放 · 点模块看详情</span>
+  <span class="corner readout" id="readout">等待首条事件</span>
+</div>
+
+<aside class="panel left" id="notebook" aria-label="运行日志">
+  <div class="ph"><h2>运行日志</h2><div class="seg-sm" id="src-seg" role="group" aria-label="数据来源"><button type="button" data-src="demo" aria-pressed="true">全事件演示</button><button type="button" data-src="replay" aria-pressed="false">本机回放</button></div></div>
+  <ol class="proto" id="proto">
+    <li data-phase="waiting_for_model" style="--c: var(--teal)">请求<small>等首 token</small></li>
+    <li data-phase="streaming_reasoning" style="--c: var(--violet)">推理<small>思考</small></li>
+    <li data-phase="streaming_text" style="--c: var(--blue)">输出<small>正文</small></li>
+    <li data-phase="tool_execution" style="--c: var(--amber)">工具<small>执行</small></li>
+    <li data-phase="permission_prompt" style="--c: var(--red)">权限<small>审批</small></li>
+  </ol>
+  <div class="runline"><span id="runline">回合 — · 请求 —</span><span id="feed-count">0</span></div>
+  <div class="scroll"><ol id="feed" aria-live="polite"></ol></div>
+</aside>
+
+<aside class="panel right" id="instruments" aria-label="监视">
+  <div class="ph"><h2 id="rp-title">监视</h2><div class="seg-sm" id="rtabs" role="tablist" aria-label="面板"><button type="button" role="tab" data-tab="ins" aria-selected="true" aria-pressed="true">监视</button><button type="button" role="tab" data-tab="codex" aria-selected="false" aria-pressed="false">图鉴 <em id="codex-count">0</em></button></div></div>
+  <div class="scroll" id="codex-pane" hidden><div class="codex" id="codex"></div></div>
+  <div class="scroll" id="ins-pane"><div class="ins">
+    <section class="blk">
+      <h3>上下文 · 窗口<em id="ctx-pct">—</em></h3>
+      <div class="gauge" id="ctx-gauge"><i></i><b title="85% 自动压缩线"></b></div>
+      <div class="gauge-note"><span id="ctx-num">等待首条更新</span><span>85% 压缩</span></div>
+    </section>
+    <section class="blk">
+      <h3>上下文构成<em id="comp-note">—</em></h3>
+      <div class="stack" id="comp-bar"></div>
+      <div class="legend-k wrap" id="comp-legend"></div>
+    </section>
+    <section class="blk">
+      <h3>最近一次请求<em id="req-note">—</em></h3>
+      <div class="stack blocks" id="req-bar"></div>
+      <div class="gauge-note"><span id="req-sub">每格 256 token：青色命中缓存，蓝绿重新预填</span></div>
+    </section>
+    <dl class="readouts">
+      <div><dt>首 token TTFT</dt><dd id="st-ttft">—</dd><small id="st-ttft-sub">每次请求的首 token</small></div>
+      <div><dt>吞吐 tok/s</dt><dd id="st-tps">—</dd><small id="st-tps-sub">上一回合输出速率</small></div>
+      <div><dt>前缀缓存命中</dt><dd id="st-cache">—</dd><small id="st-cache-sub">缓存读取占输入</small></div>
+      <div><dt>工具 成功率</dt><dd id="st-tools">—</dd><small id="st-tools-sub">工具调用</small></div>
+    </dl>
+    <section class="blk">
+      <h3>架构分层<em>点一层，镜头框住它</em></h3>
+      <ol class="domains" id="domains"></ol>
+    </section>
+    <section class="blk">
+      <h3>事件覆盖<em id="cov-note">—</em></h3>
+      <div class="gauge cov" id="cov-gauge"><i></i></div>
+    </section>
+    <section class="blk">
+      <h3>输入 · 每回合<em id="in-max"></em></h3>
+      <canvas class="chart" id="ch-in"></canvas>
+      <div class="legend-k"><span><i style="background: var(--teal-f); opacity: .45"></i>缓存命中</span><span><i style="background: var(--teal-f)"></i>新预填</span></div>
+    </section>
+    <section class="blk">
+      <h3>输出 · 每回合<em id="out-max"></em></h3>
+      <canvas class="chart" id="ch-out"></canvas>
+      <div class="legend-k"><span><i style="background: var(--violet-f)"></i>推理</span><span><i style="background: var(--blue-f)"></i>正文</span></div>
+    </section>
+    <section class="blk" id="subcard" hidden>
+      <h3>子 agent<em id="sub-state">—</em></h3>
+      <p id="sub-line">—</p><div class="bar"><i id="sub-bar"></i></div>
+    </section>
+    <section class="blk">
+      <h3>归档 · 长期<em id="arc-count">—</em></h3>
+      <div class="archive" id="archive"></div>
+      <div class="archive-note" id="arc-note">—</div>
+    </section>
+    <section class="blk">
+      <h3>模块<em id="st-used">—</em></h3>
+      <ol class="stations" id="stations"></ol>
+    </section>
+  </div></div>
+</aside>
+
+<nav class="capsule" aria-label="回放控制">
+  <button type="button" id="pause" aria-label="暂停"></button>
+  <div class="seg speed-x" id="speed-seg" role="group" aria-label="速度">
+    <button type="button" data-speed="1" aria-pressed="false">1×</button><button type="button" data-speed="2" aria-pressed="true">2×</button><button type="button" data-speed="4" aria-pressed="false">4×</button><button type="button" data-speed="8" aria-pressed="false">8×</button>
+  </div>
+  <span class="sep"></span>
+  <div class="seg" id="view-seg" role="group" aria-label="视角">
+    <button type="button" data-view="follow" aria-pressed="true">跟随</button><button type="button" data-view="overview" aria-pressed="false">全景</button>
+  </div>
+  <span class="sep"></span>
+  <label class="xray" for="xray"><span>封装盖</span><input type="range" id="xray" min="0" max="100" value="18" aria-label="封装盖的透明程度"></label>
+  <button type="button" id="signs-btn" aria-pressed="true" title="模块名牌：近看是模块，远看是架构层">名牌</button>
+  <button type="button" id="pins-btn" aria-pressed="true" title="模块编号">编号</button>
+  <button type="button" id="panels-btn" aria-pressed="true" title="显示或收起两侧面板">面板</button>
+  <button type="button" id="theme-btn" aria-label="切换明暗"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none"/></svg></button>
+  <button type="button" id="demo-btn" aria-expanded="false" aria-controls="demo-pop">章节</button>
+  <span class="sep mob"></span>
+  <button type="button" class="mob" data-sheet="notebook" aria-pressed="false">日志</button>
+  <button type="button" class="mob" data-sheet="instruments" aria-pressed="false">监视</button>
+</nav>
+<div class="demo-pop" id="demo-pop" hidden>
+  <p class="pop-h" id="chap-h">章节</p>
+  <div id="chapters"></div>
+</div>
+
+<div class="dialog" id="dialog" role="dialog" aria-modal="false" hidden></div>
+<aside class="inspector" id="inspector" aria-label="检查器" hidden>
+  <div class="ph"><h2 id="ins-title">—</h2><button type="button" id="ins-close" aria-label="关闭">关闭</button></div>
+  <div class="scroll" id="ins-body"></div>
+</aside>
+<div class="toasts" id="toasts" aria-live="polite"></div>

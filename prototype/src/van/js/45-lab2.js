@@ -1,15 +1,4 @@
 // ═════════════════════════ the lab, continued: tool instruments and the rest of the van ═════════════════════════
-function fitText(c, text, maxW) { text = String(text ?? ''); if (c.measureText(text).width <= maxW) return text; while (text.length > 1 && c.measureText(text + '…').width > maxW) text = text.slice(0, -1); return text + '…'; }
-// an instrument LCD: a bold title row and a few body rows
-function lcdDraw(c, w, h, s, P) {
-  const rows = s.rows || 4, lh = h / (rows + 1.4);
-  c.fillStyle = P.screenInk; c.textBaseline = 'top';
-  c.font = `600 ${lh * 0.74}px ${FONT_MONO}`; c.fillText(fitText(c, s.title || '', w * 0.92), w * 0.04, lh * 0.3);
-  c.globalAlpha = 0.25; c.fillRect(w * 0.04, lh * 1.2, w * 0.92, Math.max(1, h * 0.008)); c.globalAlpha = 0.85;
-  c.font = `400 ${lh * 0.66}px ${FONT_MONO}`;
-  (s.lines || []).slice(0, rows).forEach((ln, i) => c.fillText(fitText(c, ln, w * 0.92), w * 0.04, lh * (1.45 + i)));
-  c.globalAlpha = 1;
-}
 // a sample holder: a little block with a well where the robot sets an order vial
 function holder(k, x, y, z) {
   k.box(6, 3, 6, { p: [x, y, z], rr: 1, b: 0.4, color: MAT.pale, tone: 0.55 });

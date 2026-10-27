@@ -1,10 +1,14 @@
 # Starfleet
 
-把 coding agent 一次任务里的全部流程事件（请求、推理、正文、工具调用、权限、hook、压缩、子 agent……）画成一辆剖开的厢式车实验室：MV-01。agent 的执行过程就是一次实验流程。先接 grok-build（131 种事件全部有对应的仪器和动画），后续接更多 agent。
+把 coding agent 一次任务里的全部流程事件（请求、推理、正文、工具调用、权限、hook、压缩、子 agent……）画成一张会动的等轴测图。先接 grok-build（131 种事件全部有对应的部件和动画），后续接更多 agent。同一套渲染、HUD 和事件图鉴，现在有两个场景：
+
+- **MV-01 移动实验车**（`starfleet.html`）：一辆剖开的厢式车实验室，agent 的执行过程是一次实验流程。
+- **TK-1 推理机**（`engine.html`）：一块放大的推理主板，模型、上下文、缓存、工具、权限都是板上的部件，数据沿铜走线以光脉冲流动；模型画成「层 × 位置」的 KV 缓存墙，前面一台解码小车逐层前向、拉出注意力弧、在顶上采样。设计见 [docs/engine-design.md](docs/engine-design.md)。
+- **HX-1 运行时芯片**（`soc.html`）：直接画 grok-build harness 本身。芯片上的每个模块都取自源码（回合控制、智能体循环、请求组装、采样器、流处理、工具执行、权限、hook、MCP 池、压缩器、记忆、技能），远端封装是推理服务（模型、HBM 里的 KV 页、按 256 token 分块的前缀缓存）；上下文构成、每次请求的 token 数和缓存命中取自真实会话。设计和源码阅读摘要见 [docs/soc-design.md](docs/soc-design.md)。
 
 画风参考 [anatomy](https://github.com/wheresryan22/anatomy)（等轴测、纸面四档明暗、细墨线、密集的小零件、卡片四角）和 [Every Joule](https://iamtechartist.github.io/every-joule-lesson1/)（纸上的 3D 墨线图、玻璃容器里的彩色液体）。完整的设计说明和事件映射见 [docs/lab-design.md](docs/lab-design.md)。
 
-## 隐喻（简表）
+## MV-01 的隐喻（简表）
 
 | 实验车里 | agent 里 |
 |---|---|
@@ -25,15 +29,19 @@
 ```
 docs/grok-trace-events.md     grok-build 事件目录：数据源、分层、各流程状态机、字段、源码位置
 docs/lab-design.md            MV-01 的画面、事件 → 实验流程映射、布局尺寸
+docs/engine-design.md         TK-1 的画面、核心的层墙与解码小车、事件 → 板上部件映射
+docs/soc-design.md            HX-1 的画面、harness 真实结构（源码阅读摘要）、模块与事件对照
 tools/extract_grok_trace.py   ~/.grok/sessions 里的一个会话 → 统一事件格式（ATE v1）
 tools/make_demo_trace.py      按源码结构体构造的全事件演示会话（构建时自动生成）
-prototype/src/page.html       页面骨架：样式、HUD、对话框
-prototype/src/js/*.js         脚本模块，按文件名顺序拼成一个 <script type="module">
+prototype/src/shared/         两个场景共用：页头、样式、页尾，以及脚本模块
+prototype/src/van/            MV-01：HUD 文案（body.html）和车里的仪器、机械臂、事件导演
+prototype/src/engine/         TK-1：HUD 文案（body.html）和板上的部件、搬运车、事件导演
+prototype/src/soc/            HX-1：HUD 文案（body.html）和芯片版图、环形总线、远端推理服务、事件导演
 prototype/data/               抽取出的样例 trace
 prototype/build.py            拼脚本、语法检查、注入 trace，输出到 prototype/dist/
 ```
 
-脚本模块：`00-core` 数据与时间线，`10-render` 纸面材质与墨线后处理，`20-kit` 几何零件库，`30-van` 车与底板，`40/45/47-lab` 各台仪器，`50-robot` 机械臂，`60-hud` 记录与仪表，`65-codex` 事件图鉴，`70-director` 事件 → 动画与对话框，`80-main` 相机、输入、主循环。
+每个场景的脚本是 `shared/js/*.js` 加上自己的 `js/*.js`，按文件名顺序拼成一个 `<script type="module">`。共享模块：`00-core` 数据与时间线，`10-render` 纸面材质与墨线后处理，`20-kit` 几何零件库，`25-world` 站点注册与小零件，`27-parts` 丝印、总线与光脉冲，`60-hud` 记录与仪表，`65-codex` 事件图鉴。场景模块：`30` 底座与外壳，`40/45/47` 各部件，`50` agent 本身（机械臂 / 搬运车），`70-director` 事件 → 动画与对话框，`80-main` 相机、输入、主循环。
 
 ## 跑小样
 
@@ -44,12 +52,12 @@ python3 tools/extract_grok_trace.py \
   --turns 0,4,8,10,11,12,15,27 \
   --out prototype/data/sample-trace.json
 
-# 2. 构建并本地预览（构建时会用 node --check 检查拼好的脚本）
+# 2. 构建并本地预览（构建时会用 node --check 检查拼好的脚本；--variant van|engine 只构建一个）
 python3 prototype/build.py
-python3 -m http.server 8765 --directory prototype/dist   # 打开 http://127.0.0.1:8765
+python3 -m http.server 8765 --directory prototype/dist   # 打开 http://127.0.0.1:8765/van/、/engine/ 或 /soc/
 ```
 
-开场是整车全景，几秒后镜头靠近、跟着机械臂。拖动转视角，滚轮缩放，点仪器或右侧列表看详情；底部的「透视」滑块调车身外壳的透明度，「编号」开关仪器编号，「面板」收起两侧面板让车铺满画面，半圆按钮切换明暗，「章节」跳到某一段。帧率不够时会自动降低渲染分辨率，地址末尾加 `#hq` 可锁定最高画质。
+开场是全景，几秒后镜头靠近、跟着 agent（实验车里是机械臂，推理机上是搬运车，芯片上跟着数据走到哪个模块）。拖动转视角，滚轮缩放，点部件或右侧列表看详情；底部的「透视 / 机箱 / 封装盖」滑块调外壳的透明度，「名牌」开关芯片上的玻璃名牌（HX-1：近看是模块，全景是架构分层），「编号」开关部件编号，「面板」收起两侧面板让画面铺满，半圆按钮切换明暗，「章节」跳到某一段。帧率不够时会自动降低渲染分辨率，地址末尾加 `#hq` 可锁定最高画质。
 
 左上角切换数据源：「全事件演示」是构造的 8 段会话，覆盖全部 131 种事件；「本机回放」是你自己的 grok 会话。右上「图鉴」记录每种事件出现过几次。需要人决定的地方（权限、ask_user、批准方案）会弹框让你来点，倒计时结束按记录里的结果继续；拒绝记录里批准过的操作会走中止分支。
 

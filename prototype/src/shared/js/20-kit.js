@@ -102,7 +102,7 @@ const mat4 = (p = [0, 0, 0], r = [0, 0, 0], s = 1) => new THREE.Matrix4().compos
 // Kit collects the static parts of one assembly and merges them into one paper mesh, one glass mesh
 // and up to three line sets. Every part keeps its own id so the ink pass still outlines it.
 class Kit {
-  constructor(o = {}) { this.paper = []; this.glass = []; this.lines = { hi: [], mid: [], lo: [] }; this.stack = [new THREE.Matrix4()]; this.tone = o.tone ?? 0.5; this.color = o.color ?? MAT.paper; }
+  constructor(o = {}) { this.paper = []; this.glass = []; this.lines = { hi: [], mid: [], lo: [], faint: [] }; this.stack = [new THREE.Matrix4()]; this.tone = o.tone ?? 0.5; this.color = o.color ?? MAT.paper; }
   get M() { return this.stack[this.stack.length - 1]; }
   at(p, r, fn, s = 1) { this.stack.push(this.M.clone().multiply(mat4(p, r, s))); fn(this); this.stack.pop(); return this; }
   add(geo, o = {}) {
@@ -144,12 +144,12 @@ class Kit {
       const mesh = new THREE.Mesh(mergeGeometries(this.glass, false), o.glassMat ?? GLASS);
       mesh.layers.set(1); mesh.renderOrder = 2; parent.add(mesh); out.glass = mesh;
     }
-    for (const t of ['hi', 'mid', 'lo']) {
+    for (const t of ['hi', 'mid', 'lo', 'faint']) {
       if (!this.lines[t].length) continue;
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(this.lines[t], 3));
       const L = new THREE.LineSegments(g, LINE_M[t]); L.layers.set(1); L.renderOrder = 1; parent.add(L); out['line_' + t] = L;
     }
-    this.paper = []; this.glass = []; this.lines = { hi: [], mid: [], lo: [] };
+    this.paper = []; this.glass = []; this.lines = { hi: [], mid: [], lo: [], faint: [] };
     return out;
   }
 }

@@ -1,9 +1,6 @@
 // ═════════════════════════ the lab, part three: instruments for every other event family ═════════════════════════
 // Wall panels face +z from the far wall; bulkhead fittings face −x into the lab.
 const WALL_FACE = WALLZ + 0.6;
-// a lamp whose glow the director sets (0…1) and whose colour it can change
-function lampMesh(parent, p, r = 1, hex = FLUID.ok) { return mesh(sphereGeo(r, 12, 10), solid(0xffffff, { glow: 0.08, glowColor: hex }), parent, p, [0, 0, 0], { tone: 0.6, cast: false }); }
-const setLamp = (m, k, hex) => { m.material.userData.u.uGlow.value = k; if (hex != null) m.material.userData.u.uGlowColor.value.set(hex); };
 // a framed wall panel with its LCD
 function wallPanel(k, x, y, w, h, o = {}) {
   k.box(w, h, 2.2, { p: [x, y, WALL_FACE + 1.1], rr: 1.2, b: 0.5, color: o.color ?? MAT.pale, tone: o.tone ?? 0.45 });
@@ -150,7 +147,6 @@ station('incubator', {
 });
 
 // ── the hook panel: one lamp per hook event (14), flashing green / red as each hook runs ──
-const HOOK_EVENTS = ['session_start', 'user_prompt_submit', 'pre_tool_use', 'post_tool_use', 'post_tool_use_failure', 'permission_denied', 'stop', 'stop_failure', 'notification', 'subagent_start', 'subagent_stop', 'pre_compact', 'post_compact', 'session_end'];
 const HOOKP = { x: -130, y: 194 };
 station('hooks', {
   name: '质检灯板', role: 'Hook 执行 · hook_execution', color: FLUID.ok,

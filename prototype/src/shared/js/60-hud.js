@@ -49,7 +49,7 @@ const hud = {
     const n = ARCHIVE.turns, cells = 100, el = $('#archive');
     if (el.children.length !== cells) el.innerHTML = Array.from({ length: cells }, () => '<span></span>').join('');
     [...el.children].forEach((c, i) => { c.className = i < n ? (i >= ARCHIVE.base ? 'on new' : 'on') : ''; });
-    $('#arc-count').textContent = `${n} 瓶`;
+    $('#arc-count').textContent = `${n} ${WORDS.unit}`;
     $('#arc-note').textContent = `累计 ${fmtK(ARCHIVE.tokens)} token · 本机 ${LONG.sessions ?? '—'} 个会话 · 回放新增 ${n - ARCHIVE.base}`;
   },
 };
@@ -136,9 +136,6 @@ function inspectStation(id) {
     <dl><dt>状态</dt><dd>${STATE_TXT[S.state] || S.state}</dd>${S.status ? `<dt>最近</dt><dd>${esc(S.status)}</dd>` : ''}<dt>本次回放</dt><dd>${S.uses} 次</dd></dl>
     <h4>最近事件</h4><ol class="evlist">${evs.map((e, k) => `<li data-k="${k}" tabindex="0">${esc(e.demo ? e.type : TYPE_NAME[e.type] || e.type)} · ${esc(evSummary(e))}</li>`).join('') || '<li class="empty">还没有事件</li>'}</ol>`,
     root => root.querySelectorAll('.evlist li[data-k]').forEach(li => li.addEventListener('click', () => inspectEvent(evs[+li.dataset.k]))));
-}
-function inspectRobot() {
-  openInspector('龙门机器人 · agent', `<p>机器人就是正在干活的 agent：从反应釜（模型）取出工单，经安全联锁送到对应仪器，再把结果倒回储液塔（上下文）。它的指示环：灰色待命，青色忙碌，黄色闪烁是在等你，红色是出错。</p><dl><dt>当前</dt><dd>${esc(ROBOT.text)}</dd><dt>排队</dt><dd>${ROBOT.tasks.length} 项</dd><dt>位置</dt><dd>${ROBOT.at ? esc(ST[ROBOT.at]?.name || ROBOT.at) : '—'}</dd></dl>`);
 }
 function readout() {
   const pct = (S_.ctx / WINDOW_TOKENS) * 100;

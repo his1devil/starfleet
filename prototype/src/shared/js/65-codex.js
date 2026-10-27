@@ -9,7 +9,7 @@ const CODEX_LAYERS = [
   ['L5', '反向请求（等你回应）'],
 ];
 const C_TURN = '--ink', C_REQ = '--teal-f', C_THINK = '--violet-f', C_TEXT = '--blue-f', C_TOOL = '--amber-f', C_OK = '--green-f', C_ERR = '--red-f', C_USER = '--gold-f', C_PERM = '--hazard-a', C_MCP = '--teal-f', C_SYS = '--line';
-// [key, layer, 中文名, station, colour]
+// [key, layer, 中文名, place, colour] — `place` names a van station; each scene maps it with codexStation()
 const CODEX = [
   // L1 · turns and tools
   ['turn_started', 'L1', '回合开始', 'intake', C_TURN], ['loop_started', 'L1', '模型请求', 'pump', C_REQ], ['phase_changed', 'L1', '阶段 / chunk 节拍', 'reactor', C_REQ],
@@ -122,9 +122,9 @@ function renderCodex(force = false) {
 $('#codex').addEventListener('click', ev => {
   const b = ev.target.closest('.chip'); if (!b) return;
   const c = CODEX_BY.get(b.dataset.k); if (!c) return;
-  const S = ST[c[3]], n = SEEN.get(c[0]) || 0;
+  const S = ST[codexStation(c[3], c[0])], n = SEEN.get(c[0]) || 0;
   openInspector(c[2], `<p class="sub">${esc(c[1])} · <code>${esc(c[0])}</code></p>
-    <dl><dt>在车里</dt><dd>${S ? `${S.n} · ${esc(S.name)}` : '—'}</dd><dt>本次出现</dt><dd>${n ? n + ' 次' : '还没出现'}</dd></dl>
+    <dl><dt>${WORDS.place}</dt><dd>${S ? `${S.n} · ${esc(S.name)}` : '—'}</dd><dt>本次出现</dt><dd>${n ? n + ' 次' : '还没出现'}</dd></dl>
     ${S ? `<p>${esc(S.desc)}</p>` : ''}${!n && SRC === 'replay' ? '<p class="sub">本机录制里没有这种事件，切到「全事件演示」能看到。</p>' : ''}`);
   if (S) focusStation(S.id, true);
 });

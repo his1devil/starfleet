@@ -241,6 +241,103 @@ def norm_turn(n, recs):
 
 
 pick = [int(x) for x in args.turns.split(',') if x.strip()] or sorted(k for k in turns if k >= 0)
+
+
+# ── the model-visible context, segment by segment (chat_history.jsonl) ────
+# Each segment is [kind, tokens, turn, label]: sys / info / rem (reminder) / user / think / text /
+# call / result / summary. Tokens are estimated from characters (about 4 ASCII or 1.5 CJK per
+# token), which lands within a few percent of grok's own _meta.totalTokens. Labels carry names
+# only (reminder kind, tool, skill, server), never message content.
+def est_tokens(s):
+    if not s:
+        return 0
+    a = sum(1 for ch in s if ord(ch) < 128)
+    return max(1, round(a / 4 + (len(s) - a) / 1.5))
+
+
+def row_text(r):
+    c = r.get('content')
+    if isinstance(c, str):
+        return c
+    if isinstance(c, list):
+        return '\n'.join((x.get('text') or '') for x in c if isinstance(x, dict))
+    return ''
+
+
+def context_of(session_dir):
+    path = os.path.join(session_dir, 'chat_history.jsonl')
+    if not os.path.exists(path):
+        return None
+    rows = []
+    for line in open(path):
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass
+    # the turn a row belongs to: queries carry prompt_index; reminders count toward the next query,
+    # replies toward the last one; the system prompt and user_info are the preamble (-1)
+    nxt, n = [None] * len(rows), None
+    for i in range(len(rows) - 1, -1, -1):
+        if rows[i].get('prompt_index') is not None:
+            n = rows[i]['prompt_index']
+        nxt[i] = n
+    segs, prev, names, skills, mcp = [], -1, {}, [], []
+    for i, r in enumerate(rows):
+        t, txt = r.get('type'), row_text(r)
+        if r.get('prompt_index') is not None:
+            prev = r['prompt_index']
+        if t == 'system':
+            segs.append(['sys', est_tokens(txt), -1, 'system_prompt'])
+        elif t == 'user' and r.get('synthetic_reason'):
+            sub = ('skills' if 'skills are available' in txt else 'mcp+' if 'MCP servers connected' in txt
+                   else 'mcp-' if 'MCP servers disconnected' in txt else 'mcp~' if 'currently connecting' in txt
+                   else 'date' if 'date has changed' in txt else 'compact' if 'summar' in txt.lower() else r['synthetic_reason'])
+            if sub == 'skills':
+                skills = re.findall(r'^- ([\w:.\-]+):', txt, re.M)
+            if sub == 'mcp+':
+                mcp = [{'name': a, 'tools': int(b)} for a, b in re.findall(r'^- ([\w.\-]+) \((\d+) tools\)', txt, re.M)]
+            segs.append(['rem', est_tokens(txt), nxt[i] if nxt[i] is not None else prev, sub])
+        elif t == 'user' and '<user_info>' in txt and r.get('prompt_index') is None:
+            segs.append(['info', est_tokens(txt), -1, 'user_info'])
+        elif t == 'user':
+            segs.append(['user', est_tokens(txt), r.get('prompt_index', prev), 'query' if r.get('prompt_index') is not None else 'user'])
+        elif t == 'reasoning':
+            summ = ' '.join((x.get('text') or '') for x in (r.get('summary') or []) if isinstance(x, dict))
+            segs.append(['think', est_tokens(summ), prev, 'reasoning'])
+        elif t == 'assistant':
+            if txt:
+                segs.append(['text', est_tokens(txt), prev, r.get('model_id') or 'assistant'])
+            for c in r.get('tool_calls') or []:
+                names[c.get('id')] = c.get('name')
+                segs.append(['call', est_tokens(c.get('arguments') or '') + 12, prev, c.get('name')])
+        elif t == 'tool_result':
+            segs.append(['result', est_tokens(txt), prev, names.get(r.get('tool_call_id')) or 'tool'])
+        elif t:
+            segs.append([t, est_tokens(txt), prev, t])
+    pc = {}
+    try:
+        pc = json.load(open(os.path.join(session_dir, 'prompt_context.json')))
+    except (OSError, json.JSONDecodeError):
+        pass
+    return {'segments': segs, 'skills': skills, 'mcp': mcp,
+            'agentsMd': len(pc.get('agents_md_files') or []), 'memory': bool(pc.get('memory_enabled')),
+            'personas': len(pc.get('persona_summaries') or []), 'promptMode': pc.get('prompt_mode')}
+
+
+CONTEXT = context_of(SESSION_DIR)
+if CONTEXT:
+    last = max(pick) if pick else 0
+    CONTEXT['segments'] = [s for s in CONTEXT['segments'] if s[2] <= last]
+    # the tool definitions are not in the chat history: on a one-call first turn they are the gap
+    # between the billed input and grok's first context reading (which counts messages only)
+    first = turns.get(min(k for k in turns if k >= 0)) if any(k >= 0 for k in turns) else None
+    if first:
+        reads = [(o.get('params') or {}).get('_meta', {}).get('totalTokens') for _, src, o in first if src == 'up']
+        reads = [r for r in reads if r]
+        done = next(((o.get('params') or {}).get('update') or {}).get('usage') for _, src, o in first
+                    if src == 'up' and ((o.get('params') or {}).get('update') or {}).get('sessionUpdate') == 'turn_completed')
+        if reads and done and done.get('modelCalls') == 1 and done.get('inputTokens', 0) > reads[0]:
+            CONTEXT['toolsTok'] = done['inputTokens'] - reads[0]
 trace_turns = [norm_turn(-1, turns[-1])] + [norm_turn(n, turns[n]) for n in pick if n in turns]
 
 summary = json.load(open(os.path.join(SESSION_DIR, 'summary.json')))
@@ -283,6 +380,7 @@ trace = {
     },
     'longTerm': {'tokens': all_tokens, 'turns': all_turns, 'sessions': n_sessions,
                  'toolsUsed': sorted(tools_used)},
+    'context': CONTEXT,
     'turns': trace_turns,
 }
 s = json.dumps(trace, ensure_ascii=False, separators=(',', ':'))
